@@ -31,7 +31,7 @@ public class MainClient {
         buffer.clear();
 
 
-            String result = "";
+        /*    String result = "";
             try {
                 int bytesRead = client.read(buffer);
                 buffer.flip();
@@ -42,9 +42,11 @@ public class MainClient {
             catch (Exception e){
                 e.printStackTrace();
             }
-        System.out.println("Risposta: " + result);
+        System.out.println("Risposta: " + result);*/
 
 
+        // se levo client.close il server non vede che il client ha finito
+        // di mandargli il messaggio e quindi il server si blocca
         client.close();
 
 

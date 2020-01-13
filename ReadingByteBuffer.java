@@ -29,6 +29,8 @@ public class ReadingByteBuffer {
     }
 */
 
+    // legge dal buffer e aggiorna il messaggio concatenando quello letto
+    // ora a quello letto in precedenza
     public void updateOnRead() {
         byteBuffer.flip();
         int bytesNum = byteBuffer.limit();
