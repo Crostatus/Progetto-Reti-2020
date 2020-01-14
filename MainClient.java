@@ -1,81 +1,19 @@
-import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
+import java.io.IOException;
 import java.rmi.NotBoundException;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
-
 
 public class MainClient {
-    public static void main(String[] args) throws Exception, NotBoundException {
-        Registry reg = LocateRegistry.getRegistry(8080);
-        RegistrazioneInterface registra = (RegistrazioneInterface) reg.lookup("iscrizione");
-        int risultato=registra.registra_utente("bastianich98", "ciaociao98");
-        if(risultato==0)
-            System.out.println("Operazione avvenuta con successo");
-        else if(risultato==1)
-            System.out.println("Nickname già presente");
-        else
-            System.out.println("Password non valida, errore: "+risultato);
-
-        InetSocketAddress address = new InetSocketAddress("localhost", 6666);
-        SocketChannel client = SocketChannel.open(address);
-        ByteBuffer buffer = ByteBuffer.allocate(512);
-        String messaggio = "login bastianich98 ciaociao98";
-        byte[] data = messaggio.getBytes();
-        buffer.put(data);
-        buffer.flip();
-        while(buffer.hasRemaining())
-            client.write(buffer);
-        System.out.println("Ho inviato: " + messaggio);
-        buffer.clear();
 
 
-        /*    String result = "";
-            try {
-                int bytesRead = client.read(buffer);
-                buffer.flip();
-                byte[] data2 = new byte[bytesRead];
-                buffer.get(data2);
-                result = new String(data2);
-            }
-            catch (Exception e){
-                e.printStackTrace();
-            }
-        System.out.println("Risposta: " + result);*/
-
-
-        // se levo client.close il server non vede che il client ha finito
-        // di mandargli il messaggio e quindi il server si blocca
-        client.close();
+    public static void main(String[] args) throws IOException, NotBoundException, InterruptedException {
+        Client client = new Client(8080, 6666);
+        client.registra("Elkosta", "puppasedani69");
+        client.login("Elkosta", "puppasedani6969");
+        client.login("Elkosta", "puppasedani69");
+        Thread.sleep(10000);
+        client.logout();
+        client.login("Elkosta", "puppasedani69");
 
 
     }
-
-
-
-    /*InetSocketAddress address = new InetSocketAddress(hostName,port);
-        SocketChannel client = SocketChannel.open(address);
-        ByteBuffer buffer=ByteBuffer.allocateDirect(256);
-
-        // Mando il messaggio al server
-        buffer.put(data.getBytes());
-        buffer.flip();
-        while(buffer.hasRemaining())
-            client.write(buffer);
-        System.out.println("Ho inviato: "+data);
-        buffer.clear();
-        Thread.sleep(100);
-
-        // Leggo dal server
-        int num=client.read(buffer);
-        byte []data=new byte[num];
-        buffer.flip();
-        buffer.get(data);
-        System.out.println("Ho ricevuto: "+new String(data));
-        buffer.clear();
-        client.close();
-        */
-
 
 }

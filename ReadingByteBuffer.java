@@ -5,12 +5,15 @@ import java.nio.charset.Charset;
 public class ReadingByteBuffer {
     private ByteBuffer byteBuffer;
     private String message;
+    private static int CHUNKSIZE=128;
 
     public ReadingByteBuffer() {
-        byteBuffer = ByteBuffer.allocate(64);
+        byteBuffer = ByteBuffer.allocateDirect(CHUNKSIZE);
         message = "";
     }
-/*
+
+    // legge dal buffer e aggiorna il messaggio concatenando quello letto
+    // ora a quello letto in precedenza
     public boolean updateOnRead() {
         byteBuffer.flip();
         int bytesNum = byteBuffer.limit();
@@ -21,26 +24,31 @@ public class ReadingByteBuffer {
         byteBuffer.clear();
 
         if (message.endsWith("_EOM")) {
-            message = message.replace("_EOM", " - Echoed by the server");
-            byteBuffer = Charset.forName("ISO-8859-1").encode(CharBuffer.wrap(message.toCharArray()));
+            message = message.replace("_EOM", "");
             return true;
         }
         return false;
     }
-*/
 
-    // legge dal buffer e aggiorna il messaggio concatenando quello letto
-    // ora a quello letto in precedenza
-    public void updateOnRead() {
-        byteBuffer.flip();
-        int bytesNum = byteBuffer.limit();
-        byte[] data = new byte[bytesNum];
-        byteBuffer.get(data);
-        String result = new String(data);
-        message += result;
+    public void generateNewBuffer(int sizeOfMessage){
+        byteBuffer = ByteBuffer.allocateDirect(sizeOfMessage);
+    }
+
+    public void put(byte []data){
+        byteBuffer.put(data);
+    }
+
+    public void clear(){
         byteBuffer.clear();
     }
 
+    public void rewind(){
+        byteBuffer.rewind();
+    }
+
+    public void setLimit(int size){
+        byteBuffer.limit(size);
+    }
 
     public String getMessage(){
         return message;
@@ -51,9 +59,6 @@ public class ReadingByteBuffer {
     }
 
     public void updateMessagge(String risposta){
-        byteBuffer.clear();
-        message = risposta;
-        byteBuffer.put(risposta.getBytes());
-        byteBuffer.flip();
+        message=risposta;
     }
 }

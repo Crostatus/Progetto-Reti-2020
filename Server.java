@@ -7,10 +7,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
+import java.nio.channels.*;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Iterator;
@@ -21,6 +18,8 @@ public class Server {
     private  ServerSocketChannel serverSocketChannel;
     private  Selector selector;
     private  OnlineList listaUtentiOnline;
+    private static int CHUNKSIZE = 64;
+    private static String EOM = "_EOM";
 
     public Server() throws IOException {
         checkFile();
@@ -37,15 +36,10 @@ public class Server {
         listaUtentiOnline = new OnlineList();
     }
 
-    public void startServer()throws IOException{
+    public void startServer() throws IOException, InterruptedException {
         while(true){
-            try{
-                selector.select();
-            }
-            catch(IOException e){
-                //caso davvero brutto, fare qualcosa di emergenza!
-                e.printStackTrace();
-            }
+            selector.select();
+
             Set<SelectionKey> selectedKeys = selector.selectedKeys();
             Iterator<SelectionKey> iterator = selectedKeys.iterator();
 
@@ -53,20 +47,29 @@ public class Server {
                 SelectionKey currentKey = iterator.next();
                 iterator.remove();
 
-                if(!currentKey.isValid())
-                    continue;
+                try {
+                    if (!currentKey.isValid())
+                        continue;
+                    if (currentKey.isAcceptable()) {
+                        accept();
+                        System.out.println("Connessione accettata!");
+                    }
+                    if (currentKey.isReadable()) {
+                        System.out.println("Read request!");
+                        readRequest(currentKey);
+                    }
+                    if (currentKey.isWritable()) {
+                        System.out.println("Write request!");
+                        writeRequest(currentKey);
+                    }
+                }catch (IOException e){
+                    System.out.println("Chiudo tutto");
 
-                if(currentKey.isAcceptable()){
-                    accept();
-                    System.out.println("Connessione accettata!");
-                }
-                if(currentKey.isReadable()){
-                    System.out.println("Read request!");
-                    readRequest(currentKey);
-                }
-                if(currentKey.isWritable()){
-                    System.out.println("Write request!");
-                    writeRequest(currentKey);
+                    SocketChannel client = (SocketChannel) currentKey.channel();
+                    listaUtentiOnline.removeUser(client);
+                    listaUtentiOnline.printList();
+                    currentKey.cancel();
+                    client.close();
                 }
             }
         }
@@ -88,31 +91,36 @@ public class Server {
         ReadingByteBuffer attachment = (ReadingByteBuffer) newReadRequest.attachment();
         attachment.getByteBuffer().clear();
         int num = client.read(attachment.getByteBuffer());
-        System.out.println("Numero bytes letti "+num);
 
-        if(num==0)
-            System.out.println("Sto leggendo 0 bytes");
         // Entro dentro quando ho finito di leggere
-        if(num == -1) {
-            System.out.println("SSSSSSSSS");
-            newReadRequest.interestOps(SelectionKey.OP_WRITE);
-            SocketAddress clientAddress = client.getRemoteAddress();
+        if(attachment.updateOnRead()) {
+
             String richiesta = attachment.getMessage();
             System.out.println("Messaggio arrivato al server: " + richiesta);
-            String risposta = analizzaRichiesta(richiesta,clientAddress);
+            String risposta = analizzaRichiesta(richiesta,client,newReadRequest)+EOM;
 
-            byte[] data = risposta.getBytes();
-            attachment.getByteBuffer().put(data);
-
-            return;
+            attachment.updateMessagge(risposta);
+            attachment.clear();
+            System.out.println("Messaggio che invia il server: "+risposta);
+            newReadRequest.interestOps(SelectionKey.OP_WRITE);
         }
-        attachment.updateOnRead();
+    }
 
+    private void writeRequest(SelectionKey currentKey) throws IOException, InterruptedException {
+        SocketChannel client = (SocketChannel) currentKey.channel();
+        ReadingByteBuffer attachment = (ReadingByteBuffer) currentKey.attachment();
+        String risposta=attachment.getMessage();
+        ByteBuffer buffer=attachment.getByteBuffer();
 
-        //controllo di sicurezza
+        buffer=ByteBuffer.wrap(risposta.getBytes());
+        while(buffer.hasRemaining())
+            client.write(buffer);
+        attachment.updateMessagge("");
 
-        // converto data, cerco su json, controllo pw e user
-        //salvare informazioni del client che è online
+        if(risposta.equals("logout effettuato_EOM"))
+            currentKey.cancel();
+        else
+            currentKey.interestOps(SelectionKey.OP_READ);
     }
 
     private int controllo_credenziali(String nickname, String password){
@@ -138,40 +146,39 @@ public class Server {
 
     // analizza il messaggio di richiesta del client e restituisce
     // come stringa la risposta che il server deve mandare al client
-    private String analizzaRichiesta(String richiesta, SocketAddress clientAddress){
+    private String analizzaRichiesta(String richiesta, SocketChannel clientChannel, SelectionKey currentKey) throws IOException {
         StringTokenizer tokenizer = new StringTokenizer(richiesta);
         String token = tokenizer.nextToken();
         System.out.println("Token arrivato al server: " + token);
-        if(token.equals("login")) {
-            String nickname = tokenizer.nextToken();
-            String password = tokenizer.nextToken();
-            int codice = controllo_credenziali(nickname, password);
-            System.out.println("Codice richiesta di login: " + codice);
-            if (codice == 0) {
-                boolean utenteAggiunto = listaUtentiOnline.addUser(nickname, clientAddress);
-                System.out.println("utente inserito: "+utenteAggiunto);
-                listaUtentiOnline.printList();
-                if(utenteAggiunto)
-                    return "OK";
-                else
+        switch (token) {
+            case "login":{
+                String nickname = tokenizer.nextToken();
+                String password = tokenizer.nextToken();
+                int codice = controllo_credenziali(nickname, password);
+                System.out.println("Codice richiesta di login: " + codice);
+                if (codice == 0) {
+                    boolean utenteAggiunto = listaUtentiOnline.addUser(nickname, clientChannel);
+                    System.out.println("utente inserito: " + utenteAggiunto);
+                    listaUtentiOnline.printList();
+                    if (utenteAggiunto)
+                        return "OK";
                     return "Login già effettuato";
 
-            } else {
-                System.out.println("codice errore: "+codice);
-                return "Codice errore: "+codice; //Rifiuta richiesta di login e rispondi male.
+                } else {
+                    System.out.println("codice errore: " + codice);
+                    return "Codice errore: " + codice; //Rifiuta richiesta di login e rispondi male.
+                }
             }
-        }
-        return "comando non valido";
-    }
-
-    private void writeRequest(SelectionKey currentKey)throws IOException{
-        SocketChannel client = (SocketChannel) currentKey.channel();
-        ReadingByteBuffer attachment = (ReadingByteBuffer) currentKey.attachment();
-        ByteBuffer msgBuf = attachment.getByteBuffer();
-        client.write(msgBuf);
-
-        if(!msgBuf.hasRemaining()){
-            currentKey.interestOps(SelectionKey.OP_READ);
+            case "logout": {
+                String nickname = tokenizer.nextToken();
+                if(listaUtentiOnline.removeUser(nickname)) {
+                    listaUtentiOnline.printList();
+                    return "logout effettuato";
+                }
+                return "logout non effettuato";
+            }
+            default:
+                return "comando non valido";
         }
     }
 

@@ -1,4 +1,4 @@
-import java.net.SocketAddress;
+import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -10,8 +10,8 @@ public class OnlineList{
     }
 
     // returna true se ho aggiunto l'user, false altrimenti
-    public boolean addUser(String nickname, SocketAddress userAddress){
-        OnlineUser newUser = new OnlineUser(nickname, userAddress);
+    public synchronized boolean addUser(String nickname, SocketChannel userChannel){
+        OnlineUser newUser = new OnlineUser(nickname, userChannel);
 
         if(containsUser(nickname) == null) {
             list.add(newUser);
@@ -21,9 +21,18 @@ public class OnlineList{
     }
 
     // returna true se ha rimosso l'utente, false altrimenti
-    public boolean removeUser(String nickname){
+    public synchronized boolean removeUser(String nickname){
         OnlineUser userToRemove;
         if((userToRemove = containsUser(nickname)) != null) {
+            list.remove(userToRemove);
+            return true;
+        }
+        return false;
+    }
+
+    public synchronized boolean removeUser(SocketChannel socketChannel){
+        OnlineUser userToRemove;
+        if((userToRemove = containsUser(socketChannel)) != null) {
             list.remove(userToRemove);
             return true;
         }
@@ -33,7 +42,7 @@ public class OnlineList{
     //shutdown
 
     //returna true se l' utente è già presente nella lista, false altrimenti
-    private OnlineUser containsUser(String nickName){
+    private synchronized OnlineUser containsUser(String nickName){
 
         OnlineUser currentUser = null;
         Iterator<OnlineUser> iterator = list.iterator();
@@ -49,37 +58,49 @@ public class OnlineList{
         return null;
     }
 
-    public void printList(){
-        System.out.println("Lista utenti:::");
-        for(int i=0;i<list.size();i++)
-            list.get(i).printUser();
-        System.out.println(":::");
+    //returna true se il socketChannel è già presente nella lista, false altrimenti
+    private synchronized OnlineUser containsUser(SocketChannel socketChannel){
+        OnlineUser currentUser = null;
+        Iterator<OnlineUser> iterator = list.iterator();
+        boolean userAlreadyOnline = false;
+        while(iterator.hasNext() && !userAlreadyOnline){
+            currentUser = iterator.next();
+            userAlreadyOnline = currentUser.compare(socketChannel);
+        }
+        System.out.println("userAlreadyOnline: "+userAlreadyOnline);
+        if(userAlreadyOnline)
+            return currentUser;
 
+        return null;
     }
 
+    public void printList(){
+        System.out.println("\nLista utenti: ");
+        for(int i=0;i<list.size();i++)
+            list.get(i).printUser();
+        System.out.println(":\n");
 
-
-
+    }
 
 
 
 
 private class OnlineUser {
-    private SocketAddress userAddress;
+    private SocketChannel userChannel;
     private String nickname;
 
-    public OnlineUser(String nickname, SocketAddress userAddress) throws NullPointerException {
+    public OnlineUser(String nickname, SocketChannel userChannel) throws NullPointerException {
         if (nickname == null)
             throw new NullPointerException("nickname =null");
-        if (userAddress == null)
-            throw new NullPointerException("invalid socketAddress");
+        if (userChannel == null)
+            throw new NullPointerException("invalid socketChannel");
 
         this.nickname = nickname;
-        this.userAddress = userAddress;
+        this.userChannel = userChannel;
     }
 
-    public SocketAddress getUserAddress() {
-        return userAddress;
+    public SocketChannel getUserChannel() {
+        return userChannel;
     }
 
     public String getNickname() {
@@ -90,8 +111,12 @@ private class OnlineUser {
         return nickname.equals(this.nickname);
     }
 
+    public boolean compare(SocketChannel socketChannel){
+        return socketChannel.equals(this.userChannel);
+    }
+
     public void printUser(){
-        System.out.println("Username: " + nickname + " Indirizzo: " + userAddress);
+        System.out.println("Username: " + nickname + " Indirizzo: " + userChannel);
     }
 }
 

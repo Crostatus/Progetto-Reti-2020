@@ -20,7 +20,7 @@ public class RegistrazioneImpl extends UnicastRemoteObject implements Registrazi
     }
 
 
-    public synchronized int registra_utente(String nickname, String password) throws Exception{
+    public synchronized int registra_utente(String nickname, String password) throws IOException {
         int controllo = setupCredenziali(nickname, password);
         if(controllo > 0)
             return controllo;
