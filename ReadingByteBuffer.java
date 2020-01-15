@@ -1,6 +1,4 @@
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.charset.Charset;
 
 public class ReadingByteBuffer {
     private ByteBuffer byteBuffer;
@@ -38,6 +36,7 @@ public class ReadingByteBuffer {
         byteBuffer.put(data);
     }
 
+    // fa la clear del byteBuffer
     public void clear(){
         byteBuffer.clear();
     }
@@ -50,14 +49,17 @@ public class ReadingByteBuffer {
         byteBuffer.limit(size);
     }
 
+    // restituisce il messaggio
     public String getMessage(){
         return message;
     }
 
+    // restituisce il byteBuffer
     public ByteBuffer getByteBuffer() {
         return byteBuffer;
     }
 
+    // aggiorna il messaggio
     public void updateMessagge(String risposta){
         message=risposta;
     }

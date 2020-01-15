@@ -20,7 +20,7 @@ public class OnlineList{
         return false;
     }
 
-    // returna true se ha rimosso l'utente, false altrimenti
+    // returna true se ho rimosso l'utente corrispondente a nickname, false altrimenti
     public synchronized boolean removeUser(String nickname){
         OnlineUser userToRemove;
         if((userToRemove = containsUser(nickname)) != null) {
@@ -30,6 +30,7 @@ public class OnlineList{
         return false;
     }
 
+    // returna true se ha rimosso l'utente corrispondente a socketChannel, false altrimenti
     public synchronized boolean removeUser(SocketChannel socketChannel){
         OnlineUser userToRemove;
         if((userToRemove = containsUser(socketChannel)) != null) {
@@ -39,9 +40,7 @@ public class OnlineList{
         return false;
     }
 
-    //shutdown
-
-    //returna true se l' utente è già presente nella lista, false altrimenti
+    // returna OnlineUser se l' utente è già presente nella lista, null altrimenti
     private synchronized OnlineUser containsUser(String nickName){
 
         OnlineUser currentUser = null;
@@ -58,7 +57,7 @@ public class OnlineList{
         return null;
     }
 
-    //returna true se il socketChannel è già presente nella lista, false altrimenti
+    //returna OnlineUser se il socketChannel è già presente nella lista, null altrimenti
     private synchronized OnlineUser containsUser(SocketChannel socketChannel){
         OnlineUser currentUser = null;
         Iterator<OnlineUser> iterator = list.iterator();
@@ -74,6 +73,7 @@ public class OnlineList{
         return null;
     }
 
+    // stampa la lista di utenti Online
     public void printList(){
         System.out.println("\nLista utenti: ");
         for(int i=0;i<list.size();i++)
@@ -82,10 +82,27 @@ public class OnlineList{
 
     }
 
+    //Controlla se l'utente ha effettuato il login
+    public boolean checkLogin(String nickName){
+        if(containsUser(nickName) != null) return true;
+        return false;
+    }
+
+    // returna true se l'associazione tra user e socketChannel è corretta, false altrimenti
+    public synchronized boolean checkAssociazione(String user, SocketChannel socketChannel){
+        OnlineUser utente = containsUser(user);
+        if(utente == null)
+            return false;
+        else
+            if(socketChannel.equals(utente.getUserChannel()))
+                return true;
+            else
+                return false;
+    }
 
 
-
-private class OnlineUser {
+// classe che rappresenta il singolo utente online
+    private class OnlineUser {
     private SocketChannel userChannel;
     private String nickname;
 
@@ -99,25 +116,30 @@ private class OnlineUser {
         this.userChannel = userChannel;
     }
 
+    // returna il socketChannel dell'utente
     public SocketChannel getUserChannel() {
         return userChannel;
     }
 
+    // returna il nickname dell'utente
     public String getNickname() {
         return nickname;
     }
 
-    public boolean compare(String nickname){
+    // returna true se il nickname corrisponde a quello dell'utente, false altrimenti
+    public boolean compare(String nickname) {
         return nickname.equals(this.nickname);
     }
 
-    public boolean compare(SocketChannel socketChannel){
+    // returna true se il socketChannel corrisponde a quello dell'utente, false altrimenti
+    public boolean compare(SocketChannel socketChannel) {
         return socketChannel.equals(this.userChannel);
     }
 
-    public void printUser(){
+    // stampa nickname e socketChannel dell'utente
+    public void printUser() {
         System.out.println("Username: " + nickname + " Indirizzo: " + userChannel);
     }
-}
+    }
 
 }
