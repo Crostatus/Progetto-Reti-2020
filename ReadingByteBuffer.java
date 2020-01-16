@@ -4,10 +4,12 @@ public class ReadingByteBuffer {
     private ByteBuffer byteBuffer;
     private String message;
     private static int CHUNKSIZE=128;
+    private boolean codiceErroreLogin;
 
     public ReadingByteBuffer() {
         byteBuffer = ByteBuffer.allocateDirect(CHUNKSIZE);
         message = "";
+        codiceErroreLogin = false;
     }
 
     // legge dal buffer e aggiorna il messaggio concatenando quello letto
@@ -26,6 +28,14 @@ public class ReadingByteBuffer {
             return true;
         }
         return false;
+    }
+
+    public void setCodiceErroreLogin(){
+        codiceErroreLogin = true;
+    }
+
+    public boolean getCodiceErroreLogin(){
+        return codiceErroreLogin;
     }
 
     public void generateNewBuffer(int sizeOfMessage){

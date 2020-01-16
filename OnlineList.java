@@ -50,7 +50,7 @@ public class OnlineList{
             currentUser = iterator.next();
             userAlreadyOnline = currentUser.compare(nickName);
         }
-        System.out.println("userAlreadyOnline: "+userAlreadyOnline);
+        //System.out.println("userAlreadyOnline: "+userAlreadyOnline);
         if(userAlreadyOnline)
             return currentUser;
 
@@ -66,7 +66,7 @@ public class OnlineList{
             currentUser = iterator.next();
             userAlreadyOnline = currentUser.compare(socketChannel);
         }
-        System.out.println("userAlreadyOnline: "+userAlreadyOnline);
+        //System.out.println("userAlreadyOnline: "+userAlreadyOnline);
         if(userAlreadyOnline)
             return currentUser;
 

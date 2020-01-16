@@ -13,6 +13,9 @@ import java.util.Set;
 import java.util.StringTokenizer;
 
 public class Server {
+    public static final String RESET = "\u001B[0m";
+    public static final String BLUE = "\033[0;34m";
+    public static final String GREEN = "\u001B[32m";
     private  ServerSocketChannel serverSocketChannel;
     private  Selector selector;
     private  OnlineList listaUtentiOnline;
@@ -53,19 +56,19 @@ public class Server {
                         System.out.println("Connessione accettata!");
                     }
                     if (currentKey.isReadable()) {
-                        System.out.println("Read request!");
+                        System.out.println("------READ REQUEST------");
                         readRequest(currentKey);
                     }
                     if (currentKey.isWritable()) {
-                        System.out.println("Write request!");
+                        System.out.println("-------WRITE REQUEST------");
                         writeRequest(currentKey);
                     }
                 }catch (IOException  e){
-                    System.out.println("Chiudo tutto");
+                    System.out.println("------TERMINE CONNESSIONE------");
 
                     SocketChannel client = (SocketChannel) currentKey.channel();
                     listaUtentiOnline.removeUser(client);
-                    listaUtentiOnline.printList();
+                    //listaUtentiOnline.printList();
                     currentKey.cancel();
                     client.close();
                 }
@@ -92,14 +95,13 @@ public class Server {
 
         // Entro dentro quando ho finito di leggere
         if(attachment.updateOnRead()) {
-
             String richiesta = attachment.getMessage();
-            System.out.println("Messaggio arrivato al server: " + richiesta);
+            System.out.println(GREEN+"Messaggio arrivato al server: " + richiesta+RESET);
             String risposta = analizzaRichiesta(richiesta,client,newReadRequest)+EOM;
 
             attachment.updateMessagge(risposta);
             attachment.clear();
-            System.out.println("Messaggio che invia il server: "+risposta);
+
             newReadRequest.interestOps(SelectionKey.OP_WRITE);
         }
     }
@@ -115,7 +117,8 @@ public class Server {
             client.write(buffer);
         attachment.updateMessagge("");
 
-        if(risposta.equals("logout effettuato_EOM"))
+        System.out.println(BLUE+"Messaggio che invia il server: "+risposta+RESET);
+        if(risposta.equals("logout effettuato_EOM") || attachment.getCodiceErroreLogin() )
             currentKey.cancel();
         else
             currentKey.interestOps(SelectionKey.OP_READ);
@@ -149,30 +152,36 @@ public class Server {
     private String analizzaRichiesta(String richiesta, SocketChannel clientChannel, SelectionKey currentKey) throws IOException, ParseException {
         StringTokenizer tokenizer = new StringTokenizer(richiesta);
         String token = tokenizer.nextToken();
-        System.out.println("Token arrivato al server: " + token);
+        //System.out.println("Token arrivato al server: " + token);
         switch (token) {
             case "login":{
                 String nickname = tokenizer.nextToken();
                 String password = tokenizer.nextToken();
                 int codice = controllo_credenziali(nickname, password);
-                System.out.println("Codice richiesta di login: " + codice);
+                //System.out.println("Codice richiesta di login: " + codice);
                 if (codice == 0) {
                     boolean utenteAggiunto = listaUtentiOnline.addUser(nickname, clientChannel);
-                    System.out.println("utente inserito: " + utenteAggiunto);
-                    listaUtentiOnline.printList();
+                    //System.out.println("utente inserito: " + utenteAggiunto);
+                    //listaUtentiOnline.printList();
                     if (utenteAggiunto)
                         return "OK";
                     return "Login già effettuato";
 
                 } else {
-                    System.out.println("codice errore: " + codice);
-                    return "Codice errore: " + codice; //Rifiuta richiesta di login e rispondi male.
+                    ReadingByteBuffer readingByteBuffer = (ReadingByteBuffer) currentKey.attachment();
+                    readingByteBuffer.setCodiceErroreLogin();
+                   // System.out.println("codice errore: " + codice);
+                    if(codice == 1)
+                        return "Errore: utente non esistente";
+
+
+                    return "Erroe: password errata"; //Rifiuta richiesta di login e rispondi male.
                 }
             }
             case "logout": {
                 String nickname = tokenizer.nextToken();
                 if(listaUtentiOnline.removeUser(nickname)) {
-                    listaUtentiOnline.printList();
+                    //listaUtentiOnline.printList();
                     return "logout effettuato";
                 }
                 return "logout non effettuato";

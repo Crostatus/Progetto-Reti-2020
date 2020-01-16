@@ -6,12 +6,16 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.rmi.ConnectException;
 import java.rmi.NotBoundException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Iterator;
 
 public class Client {
+    public static final String RESET = "\u001B[0m";
+    public static final String BLUE = "\033[0;34m";
+    public static final String GREEN = "\u001B[32m";
     private  String EOM="_EOM";
     private  int CHUNKSIZE = 128;
     private InetSocketAddress address;
@@ -31,32 +35,46 @@ public class Client {
 
     // operazione per registrare l'utente
     public boolean registra(String nickname, String password) throws NotBoundException,IOException {
-        Registry reg = LocateRegistry.getRegistry(registerPort);
-        this.nickname = nickname;
-        RegistrazioneInterface registra = (RegistrazioneInterface) reg.lookup("iscrizione");
-        int risultato=registra.registra_utente(nickname, password);
-        if(risultato==0) {
-            System.out.println("Operazione avvenuta con successo");
-            return true;
+        if(!login) {
+            if(controllo_credenziali(nickname,password)) {
+                Registry reg = LocateRegistry.getRegistry(registerPort);
+                this.nickname = nickname;
+                RegistrazioneInterface registra = (RegistrazioneInterface) reg.lookup("iscrizione");
+                int risultato = registra.registra_utente(nickname, password);
+                if (risultato == 0) {
+                    System.out.println("Operazione avvenuta con successo");
+                    return true;
+                } else if (risultato == 1)
+                    System.out.println("Nickname già presente");
+                return false;
+            }
+            return false;
         }
-        else if(risultato==1)
-            System.out.println("Nickname già presente");
-        else
-            System.out.println("Password non valida, errore: "+risultato);
+        System.out.print("Registrazione non permessa, login gia effettuato");
         return false;
-
     }
 
     // richiesta di login di nickname
     public boolean login(String nickname, String password) throws IOException {
-        address = new InetSocketAddress("localhost",tcpPort);
-        client = SocketChannel.open(address);
-        buffer = ByteBuffer.allocate(CHUNKSIZE);
-        String messaggio = "login " + nickname + " " + password + EOM;
-        inviaRichiesta(messaggio);
-        riceviRisposta();
-        login = true;
-        return true;
+        if(login){
+            System.out.println("Login già effettuato");
+            return false;
+        }
+        if(controllo_credenziali(nickname,password)) {
+            this.nickname = nickname;
+            address = new InetSocketAddress("localhost", tcpPort);
+            client = SocketChannel.open(address);
+            buffer = ByteBuffer.allocate(CHUNKSIZE);
+            String messaggio = "login " + nickname + " " + password + EOM;
+            inviaRichiesta(messaggio);
+            String risposta = riceviRisposta();
+            if (risposta.equals("OK")) {
+                login = true;
+                return true;
+            }
+            return false;
+        }
+        return false;
     }
 
     // richiesta di logout
@@ -76,9 +94,11 @@ public class Client {
     // richiesta di stampare la lista amici di nickname
     public void lista_amici(String nickname) throws IOException, ParseException {
         if(login){
-            String richiesta = "lista_amici "+ nickname+EOM;
-            inviaRichiesta(richiesta);
-            riceviRispostaJson();
+            if(controllo_credenziali(nickname)) {
+                String richiesta = "lista_amici " + nickname + EOM;
+                inviaRichiesta(richiesta);
+                riceviRispostaJson();
+            }
         }
         else System.out.println("Login non effettuato");
     }
@@ -93,18 +113,50 @@ public class Client {
         else System.out.println("Login non effettuato");
     }
 
+    // restituisce true se il controllo va a buon fine
+    private boolean controllo_credenziali(String nickname, String password){
+        if (nickname == null || nickname.length() <= 3 || nickname.length() >= 15){
+            System.out.println("Nickname non valido");
+            return false;
+        }
+        if(password == null || password.length() <= 3 || password.length() >= 15 || noDigit(password)){
+            System.out.println("password non valida");
+            return false;
+        }
+        return true;
+    }
+
+    // restituisce true se il controllo va a buon fine
+    private boolean controllo_credenziali(String nickname){
+        if (nickname == null || nickname.length() <= 3 || nickname.length() >= 15){
+            System.out.println("Nickname non valido");
+            return false;
+        }
+        return true;
+    }
+
+    // restituisce true se la password contiene meno di due cifre, false altrimenti
+    private boolean noDigit(String p){
+        int count=0;
+        for(int i=0;i<p.length();i++)
+            if(Character.isDigit(p.charAt(i))) count++;
+        if(count<2) return true;
+        return false;
+    }
+
     // invia la richiesta al server
     private void inviaRichiesta(String richiesta) throws IOException {
+        //System.out.print("------RIC");
         byte[] data = richiesta.getBytes();
         buffer=ByteBuffer.wrap(data);
         while(buffer.hasRemaining())
             client.write(buffer);
-        System.out.println("Ho inviato: " + richiesta);
+        System.out.println(BLUE+"Ho inviato: " + richiesta+RESET);
         buffer.clear();
     }
 
     // riceve la risposta dal server
-    private void riceviRisposta() throws IOException {
+    private String riceviRisposta() throws IOException {
         String result="";
         int bytesRead = 0;
         byte[] data2;
@@ -118,7 +170,8 @@ public class Client {
         }
         result = result.replace("_EOM", "");
 
-        System.out.println("Risposta: " + result);
+        System.out.println(GREEN+"Risposta: " + result+RESET);
+        return result;
     }
 
     // riceve la risposta dal server in formato Json
@@ -136,6 +189,7 @@ public class Client {
         }
         result = result.replace("_EOM", "");
 
+        //System.out.println(result);
         JSONParser parser = new JSONParser();
         Object obj= parser.parse(result);
         JSONObject utente = (JSONObject) obj;
@@ -148,10 +202,10 @@ public class Client {
         JSONArray lista = (JSONArray) utente.get("lista_amici");
 
         Iterator<JSONObject> iterator = lista.iterator();
-        System.out.println("Lista amici "+nickname+": ");
+        System.out.println(GREEN+"Lista amici "+nickname+": "+RESET);
         while (iterator.hasNext()){
             JSONObject amico = iterator.next();
-            System.out.print(amico.get("amico")+" ");
+            System.out.print(GREEN+amico.get("amico")+" "+RESET);
         }
         System.out.println();
     }
