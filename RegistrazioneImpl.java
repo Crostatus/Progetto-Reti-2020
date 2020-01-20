@@ -20,7 +20,7 @@ public class RegistrazioneImpl extends UnicastRemoteObject implements Registrazi
     }
 
 
-    public synchronized int registra_utente(String nickname, String password) throws Exception{
+    public synchronized int registra_utente(String nickname, String password) throws IOException {
         int controllo = setupCredenziali(nickname, password);
         if(controllo > 0)
             return controllo;
@@ -81,7 +81,6 @@ public class RegistrazioneImpl extends UnicastRemoteObject implements Registrazi
     // Metodo per l' inizializzazione di un utente con annessi controlli.
     // Returns: 0 => registrazione avvenuta con successo
     //          1 => il nickname è già stato utilizzato
-    //          2 => la password non è valida
     private int setupCredenziali(String nickname, String password) throws IOException {
         JSONParser parser = new JSONParser();
         Object obj=null;
@@ -95,14 +94,12 @@ public class RegistrazioneImpl extends UnicastRemoteObject implements Registrazi
         }
         JSONArray jsonArray = (JSONArray) obj;
         Iterator<JSONObject>  iterator= jsonArray.iterator();
-        System.out.println(((JSONArray) obj).toJSONString());
+        //System.out.println(((JSONArray) obj).toJSONString());
         while(iterator.hasNext()) {
             JSONObject oggetto = iterator.next();
             if(oggetto.get("nickname").equals(nickname))
                 return 1;
         }
-        if(password == null || password.length()<=5 || !noDigit(password) )
-            return 2;
 
         JSONObject jsonObject =new JSONObject();
         jsonObject.put("nickname",nickname);
@@ -113,17 +110,8 @@ public class RegistrazioneImpl extends UnicastRemoteObject implements Registrazi
         fileWriter.write(jsonArray.toJSONString());
         fileWriter.flush();
         fileWriter.close();
-        System.out.println("Utente: " + nickname + "Pass: " + password);
+        //System.out.println("Utente: " + nickname + "Pass: " + password);
         return 0;
-    }
-
-    // restituisce true se la password contiene meno di due cifre, false altrimenti
-    private boolean noDigit(String p){
-        int count=0;
-        for(int i=0;i<p.length();i++)
-            if(Character.isDigit(p.charAt(i))) count++;
-        if(count<=2) return true;
-        return false;
     }
 
     // controllo se il file ha dimensione 0, in quel caso lo inizializzo
@@ -138,6 +126,4 @@ public class RegistrazioneImpl extends UnicastRemoteObject implements Registrazi
             fileWriter.close();
         }
     }
-
-
 }

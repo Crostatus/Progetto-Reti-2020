@@ -1,16 +1,19 @@
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.charset.Charset;
 
 public class ReadingByteBuffer {
     private ByteBuffer byteBuffer;
     private String message;
+    private static int CHUNKSIZE=128;
+    private boolean codiceErroreLogin;
 
     public ReadingByteBuffer() {
-        byteBuffer = ByteBuffer.allocate(64);
+        byteBuffer = ByteBuffer.allocateDirect(CHUNKSIZE);
         message = "";
+        codiceErroreLogin = false;
     }
-/*
+
+    // legge dal buffer e aggiorna il messaggio concatenando quello letto
+    // ora a quello letto in precedenza
     public boolean updateOnRead() {
         byteBuffer.flip();
         int bytesNum = byteBuffer.limit();
@@ -21,30 +24,53 @@ public class ReadingByteBuffer {
         byteBuffer.clear();
 
         if (message.endsWith("_EOM")) {
-            message = message.replace("_EOM", " - Echoed by the server");
-            byteBuffer = Charset.forName("ISO-8859-1").encode(CharBuffer.wrap(message.toCharArray()));
+            message = message.replace("_EOM", "");
             return true;
         }
         return false;
     }
-*/
 
-    public void updateOnRead() {
-        byteBuffer.flip();
-        int bytesNum = byteBuffer.limit();
-        byte[] data = new byte[bytesNum];
-        byteBuffer.get(data);
-        String result = new String(data);
-        message += result;
+    public void setCodiceErroreLogin(){
+        codiceErroreLogin = true;
+    }
+
+    public boolean getCodiceErroreLogin(){
+        return codiceErroreLogin;
+    }
+
+    public void generateNewBuffer(int sizeOfMessage){
+        byteBuffer = ByteBuffer.allocateDirect(sizeOfMessage);
+    }
+
+    public void put(byte []data){
+        byteBuffer.put(data);
+    }
+
+    // fa la clear del byteBuffer
+    public void clear(){
         byteBuffer.clear();
     }
 
+    public void rewind(){
+        byteBuffer.rewind();
+    }
 
+    public void setLimit(int size){
+        byteBuffer.limit(size);
+    }
+
+    // restituisce il messaggio
     public String getMessage(){
         return message;
     }
 
+    // restituisce il byteBuffer
     public ByteBuffer getByteBuffer() {
         return byteBuffer;
+    }
+
+    // aggiorna il messaggio
+    public void updateMessagge(String risposta){
+        message=risposta;
     }
 }

@@ -1,62 +1,45 @@
-import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
+import org.json.simple.parser.ParseException;
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.rmi.NotBoundException;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
-
 
 public class MainClient {
-    public static void main(String[] args) throws Exception, NotBoundException {
-        Registry reg = LocateRegistry.getRegistry(8080);
-        RegistrazioneInterface registra = (RegistrazioneInterface) reg.lookup("iscrizione");
-        int risultato=registra.registra_utente("bastianich11", "ciaociao98");
-        if(risultato==0)
-            System.out.println("Operazione avvenuta con successo");
-        else if(risultato==1)
-            System.out.println("Nickname già presente");
-        else
-            System.out.println("Password non valida, errore: "+risultato);
 
-        InetSocketAddress address = new InetSocketAddress("localhost", 6666);
-        SocketChannel client = SocketChannel.open(address);
-        ByteBuffer buffer = ByteBuffer.allocate(512);
-        String messaggio = "login bastianich11 ciaociao98";
-        byte[] data = messaggio.getBytes();
-        buffer.put(data);
-        buffer.flip();
-        while(buffer.hasRemaining())
-            client.write(buffer);
-        System.out.println("Ho inviato: " + messaggio);
-        buffer.clear();
-        client.close();
+
+    public static void main(String[] args) throws IOException, NotBoundException, InterruptedException {
+        try{
+            //DatagramSocket socket = new DatagramSocket(9999);
+            Client test = new Client(8080, 6666, 6668);
+            test.login("alessandro", "prova98");
+            System.out.println("linea 15");
+            Client test1 = new Client(8080, 6666, 6667);
+            System.out.println("linea 17");
+            test1.login("andrea", "prova98");
+            System.out.println("linea 19");
+            test1.sfida("andrea","alessandro");
+
+
+
+            /*byte[]buffer = new byte[20];
+            DatagramPacket ricever = new DatagramPacket(buffer,buffer.length);
+
+            socket.receive(ricever);
+            System.out.println("CIAO");
+            buffer= ricever.getData();
+            String messaggio = new String(buffer);
+
+
+            System.out.println("UDP message: "+messaggio);*/
+
+
+
+        }catch (IOException e){
+            System.out.print("Server non disponibile riprovare più tardi");
+            e.printStackTrace();
+        }
 
 
     }
-
-
-    /*InetSocketAddress address = new InetSocketAddress(hostName,port);
-        SocketChannel client = SocketChannel.open(address);
-        ByteBuffer buffer=ByteBuffer.allocateDirect(256);
-
-        // Mando il messaggio al server
-        buffer.put(data.getBytes());
-        buffer.flip();
-        while(buffer.hasRemaining())
-            client.write(buffer);
-        System.out.println("Ho inviato: "+data);
-        buffer.clear();
-        Thread.sleep(100);
-
-        // Leggo dal server
-        int num=client.read(buffer);
-        byte []data=new byte[num];
-        buffer.flip();
-        buffer.get(data);
-        System.out.println("Ho ricevuto: "+new String(data));
-        buffer.clear();
-        client.close();
-        */
-
 
 }
