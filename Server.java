@@ -65,7 +65,6 @@ public class Server {
                     }
                 }catch (IOException  e){
                     System.out.println("------TERMINE CONNESSIONE------");
-
                     SocketChannel client = (SocketChannel) currentKey.channel();
                     listaUtentiOnline.removeUser(client);
                     //listaUtentiOnline.printList();
@@ -92,6 +91,9 @@ public class Server {
         ReadingByteBuffer attachment = (ReadingByteBuffer) newReadRequest.attachment();
         attachment.getByteBuffer().clear();
         int num = client.read(attachment.getByteBuffer());
+
+        //vedo quando il client termina improvvisamente
+        if(num==-1)throw new IOException();
 
         // Entro dentro quando ho finito di leggere
         if(attachment.updateOnRead()) {
@@ -358,14 +360,27 @@ public class Server {
 
     // funzione che genera tutti i file
     private void generaFile() throws IOException{
+        JSONArray jsonArray = new JSONArray();
         File dataCheck = new File("Credenziali.json");
         dataCheck.createNewFile();
+        FileWriter fileWriter= new FileWriter(dataCheck);
+        fileWriter.write(jsonArray.toJSONString());
+        fileWriter.flush();
+        fileWriter.close();
 
         dataCheck = new File("ClassificaPunti.json");
         dataCheck.createNewFile();
+        fileWriter= new FileWriter(dataCheck);
+        fileWriter.write(jsonArray.toJSONString());
+        fileWriter.flush();
+        fileWriter.close();
 
         dataCheck = new File("ListaAmici.json");
         dataCheck.createNewFile();
+        fileWriter= new FileWriter(dataCheck);
+        fileWriter.write(jsonArray.toJSONString());
+        fileWriter.flush();
+        fileWriter.close();
 
         System.out.println("Ho creato i file!");
     }
