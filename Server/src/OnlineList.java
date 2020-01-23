@@ -1,3 +1,4 @@
+import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -10,8 +11,8 @@ public class OnlineList{
     }
 
     // returna true se ho aggiunto l'user, false altrimenti
-    public synchronized boolean addUser(String nickname, SocketChannel userChannel){
-        OnlineUser newUser = new OnlineUser(nickname, userChannel);
+    public synchronized boolean addUser(String nickname, SocketChannel userChannel, SelectionKey key){
+        OnlineUser newUser = new OnlineUser(nickname, userChannel, key);
 
         if(containsUser(nickname) == null) {
             list.add(newUser);
@@ -121,9 +122,10 @@ public class OnlineList{
     public class OnlineUser {
     private SocketChannel userChannel;
     private String nickname;
+    private SelectionKey key;
     // aggiungere porta UDP che mi dice dove il client vuole che invio i dati in UDP
 
-    public OnlineUser(String nickname, SocketChannel userChannel) throws NullPointerException {
+    public OnlineUser(String nickname, SocketChannel userChannel, SelectionKey key) throws NullPointerException {
         if (nickname == null)
             throw new NullPointerException("nickname =null");
         if (userChannel == null)
@@ -131,10 +133,11 @@ public class OnlineList{
 
         this.nickname = nickname;
         this.userChannel = userChannel;
+        this.key = key;
 
     }
 
-
+    public SelectionKey getKey(){ return key;}
 
     // returna il socketChannel dell'utente
     public SocketChannel getUserChannel() {

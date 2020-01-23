@@ -66,7 +66,8 @@ public class Server {
                         System.out.println("-------WRITE REQUEST------");
                         writeRequest(currentKey);
                     }
-                }catch (IOException  e){
+                }
+                catch (IOException  e){
                     System.out.println("------TERMINE CONNESSIONE------");
                     SocketChannel client = (SocketChannel) currentKey.channel();
                     listaUtentiOnline.removeUser(client);
@@ -84,7 +85,10 @@ public class Server {
             client.configureBlocking(false);
             client.register(selector, SelectionKey.OP_READ, new ReadingByteBuffer());
         }
-        catch(Exception e) {
+        catch(ClosedChannelException e ) {
+            e.printStackTrace();
+        }
+        catch (IOException e){
             e.printStackTrace();
         }
     }
@@ -104,13 +108,14 @@ public class Server {
             System.out.println(GREEN+"Messaggio arrivato al server: " + richiesta+RESET);
             String risposta = analizzaRichiesta(richiesta,client,newReadRequest)+EOM;
 
-            newReadRequest.interestOps(SelectionKey.OP_WRITE);
-            /*if(risposta.contains("Richiesta di sfida correttamente inviata")){
-                StringTokenizer strTok = new StringTokenizer(risposta);
-                ChallangeThread thread = new ChallangeThread(strTok.nextToken(), client.socket().getInetAddress());
+
+            if(risposta.contains("Questa è una sfida")){
                 newReadRequest.interestOps(0);
-                thread.run();
-            }*/
+                attachment.updateMessagge("");
+                attachment.clear();
+                return;
+            }
+            newReadRequest.interestOps(SelectionKey.OP_WRITE);
             attachment.updateMessagge(risposta);
             attachment.clear();
         }
@@ -172,7 +177,7 @@ public class Server {
                 int codice = controllo_credenziali(nickname, password);
                 //System.out.println("Codice richiesta di login: " + codice);
                 if (codice == 0) {
-                    boolean utenteAggiunto = listaUtentiOnline.addUser(nickname, clientChannel);
+                    boolean utenteAggiunto = listaUtentiOnline.addUser(nickname, clientChannel, currentKey);
                     //System.out.println("utente inserito: " + utenteAggiunto);
                     //listaUtentiOnline.printList();
                     if (utenteAggiunto)
@@ -231,11 +236,11 @@ public class Server {
                             OnlineList.OnlineUser sfidante = listaUtentiOnline.getPlayer(myNickname);
                             OnlineList.OnlineUser sfidato = listaUtentiOnline.getPlayer(friendNickname);
 
-                            System.out.println(" Qui ci arrivo " + myNickname);
                             ChallengeThread sfida = new ChallengeThread(sfidante, sfidato);
                             sfida.start();
 
-                            return myNickname + " :Richiesta di sfida correttamente inviata";
+                            //return myNickname + " :Richiesta di sfida correttamente inviata";
+                            return "Questa è una sfida";
                         }
                         case 1:
                             return "Errore: nome utente di sessione sbagliato";

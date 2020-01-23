@@ -12,6 +12,12 @@ public class ReadingByteBuffer {
         codiceErroreLogin = false;
     }
 
+    public ReadingByteBuffer(String risposta){
+        byteBuffer = ByteBuffer.allocateDirect(CHUNKSIZE);
+        message = risposta;
+        codiceErroreLogin = false;
+    }
+
     // legge dal buffer e aggiorna il messaggio concatenando quello letto
     // ora a quello letto in precedenza
     public boolean updateOnRead() {
