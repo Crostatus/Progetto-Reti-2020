@@ -22,9 +22,11 @@ public class MainClient {
             System.out.println("linea 19");
             test1.sfida("andrea","alessandro");*/
             test.sfida("alessandro", "andrea");
-            test.logout();
-            test1.logout();
 
+            /*test.logout();
+            test1.logout();
+            */
+            test.logout();
 
 
             /*byte[]buffer = new byte[20];

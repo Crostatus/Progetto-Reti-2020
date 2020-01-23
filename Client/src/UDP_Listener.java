@@ -8,11 +8,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class UDP_Listener extends Thread{
     private DatagramSocket clientSocket;
     private AtomicBoolean inAMatch; //true => il client sta facendo una sfida. || false altrimenti
+    private String nickname;
 
 
-    public UDP_Listener( AtomicBoolean playerStatus, int udp)throws SocketException {
+    public UDP_Listener(AtomicBoolean bool,int udp, String nickname)throws SocketException {
         this.clientSocket = new DatagramSocket(udp);
-        inAMatch = playerStatus;
+        this.inAMatch = bool;
+        this.nickname = nickname;
+        System.out.println(nickname+" " + inAMatch.get());
     }
 
     public void run() {
@@ -27,17 +30,18 @@ public class UDP_Listener extends Thread{
                 System.out.println(packet.getPort());
                 buffer = packet.getData();
                 message = new String(buffer);
-                if(!inAMatch.get())
-                   System.out.println("Richiesta rivevuta: " + message);
-                String risposta="si";
-                if(risposta.equals("si"))
-                    inAMatch.set(true);
-                byte[] buffer1 = risposta.getBytes();
-                packet = new DatagramPacket(buffer1, buffer1.length, serverAddress, serverPort);
-                clientSocket.send(packet);
+                if(!inAMatch.get()) {
+                    String risposta = "si";
+                    if (risposta.equals("si"))
+                        inAMatch.set(true);
+                    byte[] buffer1 = risposta.getBytes();
+                    packet = new DatagramPacket(buffer1, buffer1.length, serverAddress, serverPort);
+                    clientSocket.send(packet);
 
 
-            System.out.println("Messaggio UDP: "+message);
+                    System.out.println("Messaggio UDP: " + message);
+                }else
+                    System.out.print(" Sono già in una sfida");
             }catch (IOException e){
                 e.printStackTrace();
             }

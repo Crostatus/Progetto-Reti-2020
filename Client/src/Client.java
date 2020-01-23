@@ -40,6 +40,16 @@ public class Client {
         inAMatch = new AtomicBoolean(false);
     }
 
+    // setto inAMatch a val
+    public void setBoolean(boolean val){
+        inAMatch.set(val);
+    }
+
+    // restituisce il valore booleano di inAMactch
+    public boolean getBoolean(){
+        return inAMatch.get();
+    }
+
     // operazione per registrare l'utente
     public boolean registra(String nickname, String password) throws NotBoundException,IOException {
         if(!login) {
@@ -73,10 +83,11 @@ public class Client {
             client = SocketChannel.open(address);
             buffer = ByteBuffer.allocate(CHUNKSIZE);
             int port = client.socket().getLocalPort();
-            challengeListener = new UDP_Listener(inAMatch, port);
-           // challengeListener.setDaemon(true);
+            //inAMatch.set(true);
+            challengeListener = new UDP_Listener(inAMatch,port,nickname);
+            //challengeListener.setDaemon(true);
             challengeListener.start();
-            System.out.println(port);
+            //System.out.println(port);
             String messaggio = "login " + nickname + " " + password + EOM;
             inviaRichiesta(messaggio);
             String risposta = riceviRisposta();
@@ -91,11 +102,12 @@ public class Client {
 
     // richiesta di logout
     public void logout()throws IOException{
-        if(login) {
+        if(login && !inAMatch.get()) {
             String richiesta = "logout " + nickname + EOM;
             inviaRichiesta(richiesta);
             riceviRisposta();
             login = false;
+            //System.out.println(nickname+"        "+inAMatch.get());
             challengeListener.interrupt();
             // la close la devo fare solo quando effettuo l'operazione di logout
             client.close();
@@ -105,7 +117,7 @@ public class Client {
 
     // richiesta di stampare la lista amici di nickname
     public void lista_amici(String nickname) throws IOException, ParseException {
-        if(login){
+        if(login && !inAMatch.get()){
             if(controllo_credenziali(nickname)) {
                 String richiesta = "lista_amici " + nickname + EOM;
                 inviaRichiesta(richiesta);
@@ -117,7 +129,7 @@ public class Client {
 
     // richiesta di aggiungere friendNickname alla lista amici di myNickname e viceversa
     public void aggiungi_amico(String myNickname, String friendNickname) throws IOException {
-        if(login) {
+        if(login && !inAMatch.get()) {
             if(myNickname.equals(friendNickname)) {
                 System.out.println(RED+"Non puoi aggiungere te stesso"+RESET);
                 return;
@@ -129,16 +141,19 @@ public class Client {
         else System.out.println(RED+"Login non effettuato"+RESET);
     }
 
-    public void sfida(String myNickname, String friendNickname)throws IOException{
-        if(login){
+    public void sfida(String myNickname, String friendNickname) throws IOException, InterruptedException {
+        if(login && !inAMatch.get()){
             if(myNickname.equals(friendNickname)) {
                 System.out.println(RED+"Non puoi inviare una richiesta di sfida a te stesso"+RESET);
                 return;
             }
             String richiesta = "sfida "+myNickname+" "+friendNickname+EOM;
+            inAMatch.set(true);
             inviaRichiesta(richiesta);
-            riceviRisposta();
-
+            String risposta = riceviRisposta();
+            if(risposta.equals("Richiesta di sfida non accettata"))
+                inAMatch.set(false);
+            System.out.println(nickname+" "+inAMatch.get());
         }
         else System.out.println(RED+"Login non effettuato"+RESET);
     }
@@ -192,10 +207,10 @@ public class Client {
         while(!result.endsWith(EOM)){
             bytesRead = client.read(buffer);
             buffer.flip();
-            System.out.println(buffer.toString());
             data2 = new byte[bytesRead];
             buffer.get(data2);
             result+= new String(data2);
+            System.out.println("Byte letti " + bytesRead+" "+ result);
             buffer.clear();
         }
         result = result.replace("_EOM", "");
