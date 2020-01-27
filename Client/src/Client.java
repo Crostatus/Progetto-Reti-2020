@@ -84,7 +84,7 @@ public class Client {
             buffer = ByteBuffer.allocate(CHUNKSIZE);
             int port = client.socket().getLocalPort();
             //inAMatch.set(true);
-            challengeListener = new UDP_Listener(inAMatch,port,nickname);
+            challengeListener = new UDP_Listener(inAMatch,port,nickname, client);
             //challengeListener.setDaemon(true);
             challengeListener.start();
             //System.out.println(port);
@@ -215,7 +215,7 @@ public class Client {
         }
         result = result.replace("_EOM", "");
 
-        System.out.println(GREEN+"Risposta: " + result+RESET);
+        System.out.println(GREEN+"Risposta di "+nickname+" : " + result+RESET);
         return result;
     }
 
