@@ -19,7 +19,6 @@ public class Server {
     public static final String RESET = "\u001B[0m";
     public static final String BLUE = "\033[0;34m";
     public static final String GREEN = "\u001B[32m";
-    private final WordToTraslate dizionario;
     private  ServerSocketChannel serverSocketChannel;
     private  Selector selector;
     private  OnlineList listaUtentiOnline;
@@ -27,10 +26,7 @@ public class Server {
     private static String EOM = "_EOM";
 
     public Server() throws IOException {
-        dizionario = new WordToTraslate();
-        //System.out.println(dizionario.getRandomWord());
         checkFile();
-
         RegistrazioneInterface registra = new RegistrazioneImpl();
         LocateRegistry.createRegistry(8080);
         Registry reg = LocateRegistry.getRegistry(8080);
@@ -42,7 +38,6 @@ public class Server {
         selector = Selector.open();
         serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT, null);
         listaUtentiOnline = new OnlineList();
-
     }
 
     // ciclo while del server
@@ -241,7 +236,7 @@ public class Server {
                             OnlineList.OnlineUser sfidante = listaUtentiOnline.getPlayer(myNickname);
                             OnlineList.OnlineUser sfidato = listaUtentiOnline.getPlayer(friendNickname);
 
-                            ChallengeThread sfida = new ChallengeThread(sfidante, sfidato, dizionario.getRandomWord());
+                            ChallengeThread sfida = new ChallengeThread(sfidante, sfidato);
                             sfida.start();
 
                             //return myNickname + " :Richiesta di sfida correttamente inviata";
