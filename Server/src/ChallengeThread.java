@@ -77,6 +77,20 @@ public class ChallengeThread extends Thread{
            e.printStackTrace();
        }
        if(risposta.equals("si")){
+           risposta = "Richiesta di sfida accettata"+EOM;
+           SocketChannel channelSfidante = sfidante.getUserChannel();
+           try{
+               channelSfidante.register(selector,SelectionKey.OP_WRITE,new ReadingByteBuffer(risposta));
+           }catch (ClosedChannelException e){
+               e.printStackTrace();
+           }
+
+           try {
+               startThreadSfida();
+           } catch (IOException e) {
+               e.printStackTrace();
+           }
+
            risposta = "Via alla sfida di traduzione:\n"+randomWords.get(0)+EOM;
            ArrayList<String> paroleTradotte = null;
            SocketChannel channelSfidato = sfidato.getUserChannel();
@@ -85,9 +99,7 @@ public class ChallengeThread extends Thread{
            try {
                paroleTradotte = traduci();
                channelSfidato.register(selector, SelectionKey.OP_WRITE, new ReadingByteBuffer(risposta));
-               SocketChannel channelSfidante = sfidante.getUserChannel();
-               channelSfidante.register(selector,SelectionKey.OP_WRITE,new ReadingByteBuffer(risposta));
-               startThreadSfida();
+
            } catch (ClosedChannelException e) {
                e.printStackTrace();
            } catch (InterruptedException e){
@@ -96,11 +108,6 @@ public class ChallengeThread extends Thread{
                e.printStackTrace();
            } catch (IOException e){
                e.printStackTrace();
-               try {
-                   Thread.sleep(5000);
-               } catch (InterruptedException ex) {
-                   ex.printStackTrace();
-               }
            }
 
        }else {
@@ -212,6 +219,13 @@ public class ChallengeThread extends Thread{
            //System.out.println("-----sto scrivendo e sono il thread");
            client.write(buffer);
        }
+       if(nuovaParola.contains("Richiesta di sfida accettata")){
+           attachment.updateMessagge("Via alla sfida di traduzione:\n"+randomWords.get(0)+EOM);
+           attachment.clear();
+           currentKey.interestOps(SelectionKey.OP_WRITE);
+           return;
+       }
+
        attachment.updateMessagge("");
        attachment.clear();
 

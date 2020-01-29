@@ -16,17 +16,20 @@ public class UDP_Listener extends Thread{
     private ByteBuffer buffer;
     private  String EOM="_EOM";
     public static final String RESET = "\u001B[0m";
+    private Scanner scanner;
     public static final String BLUE = "\033[0;34m";
     public static final String GREEN = "\u001B[32m";
     public static final String RED = "\u001B[31m";
-
+    private  Object lock;
     public UDP_Listener(AtomicBoolean bool,int udp, String nickname, SocketChannel client)throws SocketException {
         this.clientSocket = new DatagramSocket(udp);
         this.buffer = ByteBuffer.allocate(64);
         this.client = client;
         this.inAMatch = bool;
+        this.lock = lock;
         this.nickname = nickname;
-        System.out.println(nickname+" " + inAMatch.get());
+        this.scanner = scanner;
+        //System.out.println(nickname+" " + inAMatch.get());
     }
 
     public void run() {
@@ -35,33 +38,42 @@ public class UDP_Listener extends Thread{
         String message = null;
         while (!Thread.currentThread().isInterrupted()){
             try {
+                System.out.println("Vediamo prima");
                 clientSocket.receive(packet);
-                InetAddress serverAddress = packet.getAddress();
-                int serverPort = packet.getPort();
-                System.out.println(packet.getPort());
-                buffer = packet.getData();
-                message = new String(buffer, 0, packet.getLength());
-                if(!inAMatch.get()) {
+                inAMatch.set(true);
+                System.out.println("Vediamo dopo");
+                    InetAddress serverAddress = packet.getAddress();
+                    int serverPort = packet.getPort();
+                    System.out.println(packet.getPort());
+                    buffer = packet.getData();
+                    message = new String(buffer, 0, packet.getLength());
+
+                    System.out.println("Messaggio UDP: " + message);
+
+
                     String risposta = "si";
+                    /*String risposta = "si";*/
+                    System.out.println("QUELLO CHE SCRIVO IO: " + risposta);
                     byte[] buffer1 = risposta.getBytes();
                     packet = new DatagramPacket(buffer1, buffer1.length, serverAddress, serverPort);
                     clientSocket.send(packet);
+                    scanner = new Scanner(System.in);
 
 
-                    System.out.println("Messaggio UDP: " + message);
                     if (risposta.equals("si")) {
-                        inAMatch.set(true);
-                        gioca(serverAddress);
+                        Gioca gioca = new Gioca(serverAddress, client,nickname);
+                        gioca.start();
                     }
-                }else
-                    System.out.print(" Sono già in una sfida");
+                    if(risposta.equals("no")) inAMatch.set(false);
+
+               // }
             }catch (IOException e){
                 e.printStackTrace();
             }
         }
         clientSocket.close();
     }
-
+    //Questo dovrà essere un thread GIOCO
     private void gioca(InetAddress serverAddress)throws IOException{
         int i = 0;
         System.out.println(RED+"IL GIOCO E' PARTITO"+RESET);

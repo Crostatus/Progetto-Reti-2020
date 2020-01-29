@@ -1,51 +1,118 @@
 import org.json.simple.parser.ParseException;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.rmi.NotBoundException;
+import java.util.NoSuchElementException;
+import java.util.Scanner;
+import java.util.StringTokenizer;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MainClient1 {
 
 
-    public static void main(String[] args) throws IOException, NotBoundException, InterruptedException, ParseException {
-        try{
-            //DatagramSocket socket = new DatagramSocket(9999);
-            Client test = new Client(8080, 6666);
-            test.login("alessandro", "prova98");
-            //test.lista_amici("alessandro");
-            /*System.out.println("linea 15");
-            Client test1 = new Client(8080, 6666);
-            System.out.println("linea 17");
-            test1.login("andrea", "prova98");
-            System.out.println("linea 19");
-            test1.sfida("andrea","alessandro");*/
-            test.sfida("alessandro", "andrea");
-            /*test.logout();
-
-            test1.logout();
-            */
-            //test.logout();
+    public static void main(String[] args) throws Exception {
 
 
-            /*byte[]buffer = new byte[20];
-            DatagramPacket ricever = new DatagramPacket(buffer,buffer.length);
+        Client prova = new Client(8080,6666);
+        prova.login("andrea", "prova98");
+        prova.sfida("andrea", "alessandro");
+        /*boolean logout = false;
+        AtomicBoolean inAMatch;
+        Client test1 = new Client(8080, 6666);
+        Scanner scanner = new Scanner(System.in);
+        String richiesta;
 
-            socket.receive(ricever);
-            System.out.println("CIAO");
-            buffer= ricever.getData();
-            String messaggio = new String(buffer);
+        stampaComandi();
+        test1.login("alessandro","prova98",scanner);
+        test1.sfida("alessandro","andrea");
+        while (!logout) {
+            if(test1.getBoolean() == true) Thread.sleep(1111);
+            //synchronized (lock) {
+                richiesta = scanner.nextLine();
+                StringTokenizer tokenizer = new StringTokenizer(richiesta);
+                String comando = "";
+                try {
+                    comando = tokenizer.nextToken();
+                } catch (NoSuchElementException e) {
+                    System.out.println("Non è stato inserito nessun comando");
+                }
+                switch (comando) {
+                    case "registra": {
+                        try {
+                            String nome = tokenizer.nextToken();
+                            String pass = tokenizer.nextToken();
+                            test1.registra(nome, pass);
+                            break;
+                        } catch (NoSuchElementException e) {
+                            System.out.println("Controllare i dati inseriti");
+                            break;
+                        }
+                    }
+                    case "login": {
+                        try {
+                            String nome = tokenizer.nextToken();
+                            String pass = tokenizer.nextToken();
+                            test1.login(nome, pass, scanner);
+                            break;
+                        } catch (NoSuchElementException e) {
+                            System.out.println("ERRORE: controllare i dati inseriti");
+                            break;
+                        }
+                    }
+                    case "aggiungi_amico": {
+                        String nome = tokenizer.nextToken();
+                        String amico = tokenizer.nextToken();
+                        test1.aggiungi_amico(nome, amico);
+                        break;
+                    }
+                    case "logout": {
+                        test1.logout();
+                        logout = true;
+                        break;
+                    }
+                    case "lista_amici": {
+                        String nome = tokenizer.nextToken();
+                        test1.lista_amici(nome);
+                        break;
+                    }
+                    case "sfida": {
+                        try {
+                            String sfidante = tokenizer.nextToken();
+                            String sfidato = tokenizer.nextToken();
+                            test1.sfida(sfidante, sfidato);
+                            break;
+                        } catch (NoSuchElementException e) {
+                            System.out.println("ERRORE: controllare i dati inseriti");
+                            break;
+                        }
+                    }
+                    case "--help": {
+                        stampaComandi();
+                        break;
+                    }
+                    default: {
+                        System.out.println("Comando non valido");
+                        break;
+                    }
+                }
 
 
-            System.out.println("UDP message: "+messaggio);*/
-
-
-
-        }catch (IOException e){
-            System.out.print("Server non disponibile riprovare più tardi");
-            e.printStackTrace();
+            //}
         }
-
-
+    }
+    private static void stampaComandi(){
+        System.out.println("Comands:");
+        System.out.println("registra_utente <utente> <password>  registral'utente");
+        System.out.println("login <nickUtente > <password > effettua il login");
+        System.out.println("logout effettua il logout");
+        System.out.println("aggiungi_amico <nickAmico> crea relazione di amicizia con nickAmico");
+        System.out.println("lista_amici mostra la lista dei propri amici");
+        System.out.println("sfida <nickAmico > richiesta di una sfida a nickAmico");
+        System.out.println("mostra_punteggio mostra il punteggio dell’utente");
+        System.out.println("mostra_classifica mostra una classifica degli amici dell’utente");
+*/
     }
 
 }

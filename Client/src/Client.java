@@ -13,6 +13,7 @@ import java.rmi.NotBoundException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Iterator;
+import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Client {
@@ -31,7 +32,8 @@ public class Client {
     private boolean login;
     private AtomicBoolean inAMatch;
     private UDP_Listener challengeListener;
-
+    private Object lock;
+    private Scanner scanner;
 
     public Client(int registerPort, int tcpPort) throws SocketException{
         this.registerPort=registerPort;
@@ -73,6 +75,7 @@ public class Client {
 
     // richiesta di login di nickname
     public boolean login(String nickname, String password) throws IOException {
+
         if(login){
             System.out.println(RED+"Login già effettuato"+RESET);
             return false;
@@ -95,8 +98,10 @@ public class Client {
                 login = true;
                 return true;
             }
+            System.out.println("Non è stato possibile effettuare il login, riprovare");
             return false;
         }
+        System.out.println("Non è stato possibile effettuare il login, riprovarelogi");
         return false;
     }
 
@@ -108,7 +113,7 @@ public class Client {
             riceviRisposta();
             login = false;
             //System.out.println(nickname+"        "+inAMatch.get());
-            challengeListener.interrupt();
+            challengeListener.interrupt(); // Evidentemente il thread rimane attivo
             // la close la devo fare solo quando effettuo l'operazione di logout
             client.close();
         }
@@ -151,9 +156,15 @@ public class Client {
             inAMatch.set(true);
             inviaRichiesta(richiesta);
             String risposta = riceviRisposta();
-            if(risposta.equals("Richiesta di sfida non accettata"))
-                inAMatch.set(false);
-            System.out.println(nickname+" "+inAMatch.get());
+            System.out.println(risposta + " check");
+            if(risposta.equals("Richiesta di sfida accettata")){
+                System.out.println(" Lo sfidante avvia la sfida");
+                Gioca gioca = new Gioca(address.getAddress(),client,nickname);
+                gioca.start();
+            }
+
+            else   inAMatch.set(false);
+            //System.out.println(nickname+" "+inAMatch.get());
         }
         else System.out.println(RED+"Login non effettuato"+RESET);
     }
@@ -210,7 +221,7 @@ public class Client {
             data2 = new byte[bytesRead];
             buffer.get(data2);
             result+= new String(data2);
-            System.out.println("Byte letti " + bytesRead+" "+ result);
+            //System.out.println("Byte letti " + bytesRead+" "+ result);
             buffer.clear();
         }
         result = result.replace("_EOM", "");

@@ -42,6 +42,7 @@ public class Server {
         selector = Selector.open();
         serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT, null);
         listaUtentiOnline = new OnlineList();
+
     }
 
     // ciclo while del server
