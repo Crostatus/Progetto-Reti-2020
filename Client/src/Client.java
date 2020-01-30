@@ -3,16 +3,15 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetSocketAddress;
-import java.net.SocketException;
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.rmi.NotBoundException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Iterator;
+import java.util.Scanner;
+import java.util.StringTokenizer;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Client {
@@ -84,7 +83,7 @@ public class Client {
             buffer = ByteBuffer.allocate(CHUNKSIZE);
             int port = client.socket().getLocalPort();
             //inAMatch.set(true);
-            challengeListener = new UDP_Listener(inAMatch,port,nickname);
+            challengeListener = new UDP_Listener(inAMatch,port,nickname, client);
             //challengeListener.setDaemon(true);
             challengeListener.start();
             //System.out.println(port);
@@ -141,6 +140,18 @@ public class Client {
         else System.out.println(RED+"Login non effettuato"+RESET);
     }
 
+    private void gioca()throws IOException{
+        Scanner scanner = new Scanner(System.in);
+        int i;
+        for(i=0; i<3; i++){
+            String parolaTradotta = scanner.nextLine();
+            inviaRichiesta(parolaTradotta + EOM);
+            riceviRisposta();
+        }
+        scanner.close();
+        riceviRisposta();
+    }
+
     public void sfida(String myNickname, String friendNickname) throws IOException, InterruptedException {
         if(login && !inAMatch.get()){
             if(myNickname.equals(friendNickname)) {
@@ -153,6 +164,9 @@ public class Client {
             String risposta = riceviRisposta();
             if(risposta.equals("Richiesta di sfida non accettata"))
                 inAMatch.set(false);
+            else{
+                gioca();
+            }
             System.out.println(nickname+" "+inAMatch.get());
         }
         else System.out.println(RED+"Login non effettuato"+RESET);
@@ -210,7 +224,7 @@ public class Client {
             data2 = new byte[bytesRead];
             buffer.get(data2);
             result+= new String(data2);
-            System.out.println("Byte letti " + bytesRead+" "+ result);
+            //System.out.println("Byte letti " + bytesRead+" "+ result);
             buffer.clear();
         }
         result = result.replace("_EOM", "");

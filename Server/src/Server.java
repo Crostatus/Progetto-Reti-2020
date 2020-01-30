@@ -3,9 +3,6 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import java.io.*;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
@@ -19,6 +16,7 @@ public class Server {
     public static final String RESET = "\u001B[0m";
     public static final String BLUE = "\033[0;34m";
     public static final String GREEN = "\u001B[32m";
+    private final WordToTraslate dizionario;
     private  ServerSocketChannel serverSocketChannel;
     private  Selector selector;
     private  OnlineList listaUtentiOnline;
@@ -26,7 +24,10 @@ public class Server {
     private static String EOM = "_EOM";
 
     public Server() throws IOException {
+        dizionario = new WordToTraslate();
+        //System.out.println(dizionario.getRandomWord());
         checkFile();
+
         RegistrazioneInterface registra = new RegistrazioneImpl();
         LocateRegistry.createRegistry(8080);
         Registry reg = LocateRegistry.getRegistry(8080);
@@ -187,7 +188,7 @@ public class Server {
                 } else {
                     ReadingByteBuffer readingByteBuffer = (ReadingByteBuffer) currentKey.attachment();
                     readingByteBuffer.setCodiceErroreLogin();
-                   // System.out.println("codice errore: " + codice);
+                    // System.out.println("codice errore: " + codice);
                     if(codice == 1)
                         return "Errore: utente non esistente";
 
@@ -230,25 +231,25 @@ public class Server {
                 String myNickname = tokenizer.nextToken();
                 String friendNickname = tokenizer.nextToken();
                 int codice = setupSfida(myNickname, friendNickname, currentKey);
-                    switch (codice){
-                        case 0: {
+                switch (codice){
+                    case 0: {
 
-                            OnlineList.OnlineUser sfidante = listaUtentiOnline.getPlayer(myNickname);
-                            OnlineList.OnlineUser sfidato = listaUtentiOnline.getPlayer(friendNickname);
+                        OnlineList.OnlineUser sfidante = listaUtentiOnline.getPlayer(myNickname);
+                        OnlineList.OnlineUser sfidato = listaUtentiOnline.getPlayer(friendNickname);
 
-                            ChallengeThread sfida = new ChallengeThread(sfidante, sfidato);
-                            sfida.start();
+                        ChallengeThread sfida = new ChallengeThread(sfidante, sfidato, dizionario.getRandomWord());
+                        sfida.start();
 
-                            //return myNickname + " :Richiesta di sfida correttamente inviata";
-                            return "Questa è una sfida";
-                        }
-                        case 1:
-                            return "Errore: nome utente di sessione sbagliato";
-                        case 2:
-                            return "Errore: amicizia non esistente";
-                        case 3:
-                            return "Errore: amico non online";
+                        //return myNickname + " :Richiesta di sfida correttamente inviata";
+                        return "Questa è una sfida";
                     }
+                    case 1:
+                        return "Errore: nome utente di sessione sbagliato";
+                    case 2:
+                        return "Errore: amicizia non esistente";
+                    case 3:
+                        return "Errore: amico non online";
+                }
 
             }
             default:
@@ -364,8 +365,8 @@ public class Server {
 
     // controlla se l'associazione tra il nickname e il socketchannel associato a quel nickname corrispondono
     private boolean checkEsistenza(String nickname, SelectionKey currentKey){
-      if(!listaUtentiOnline.checkAssociazione(nickname, (SocketChannel)currentKey.channel())) return false;
-      return  true;
+        if(!listaUtentiOnline.checkAssociazione(nickname, (SocketChannel)currentKey.channel())) return false;
+        return  true;
 
     }
 
