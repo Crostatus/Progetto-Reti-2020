@@ -16,7 +16,9 @@ public class MainClient1 {
 
 
         Client prova = new Client(8080,6666);
+        //prova.registra("andrea","prova98");
         prova.login("andrea", "prova98");
+        //prova.aggiungi_amico("andrea","alessandro");
         prova.sfida("andrea", "alessandro");
         /*boolean logout = false;
         AtomicBoolean inAMatch;

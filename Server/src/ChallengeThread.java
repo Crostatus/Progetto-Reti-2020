@@ -4,10 +4,7 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
@@ -36,9 +33,9 @@ public class ChallengeThread extends Thread{
     public static final String BLUE = "\033[0;34m";
     public static final String GREEN = "\u001B[32m";
     public static final int parolePerGioco =3;
-    private ArrayList<String> traduzioneSfidante;
-    private ArrayList<String> traduzioneSfidato;
-    ArrayList<String> paroleTradotte ;
+    private CopyOnWriteArrayList<String> traduzioneSfidante;
+    private CopyOnWriteArrayList<String> traduzioneSfidato;
+    private CopyOnWriteArrayList<String> paroleTradotte;
     private int indiceSfidante;
     private int indiceSfidato;
     private DatagramSocket DSocket;
@@ -55,12 +52,22 @@ public class ChallengeThread extends Thread{
     private int punteggioSfidante;
     private int punteggioSfidato;
 
+    // inizzializza l'array delle traduzioni dei partecipanti al gioco
+    private void inizzializzaArray(CopyOnWriteArrayList<String> traduzioni){
+        int i;
+        for(i=0; i<parolePerGioco; i++){
+            traduzioni.add(i,"");
+        }
+    }
+
     public ChallengeThread(OnlineList.OnlineUser sfidante, OnlineList.OnlineUser sfidato, ArrayList<String> randomWords)throws SocketException {
         this.sfidato = sfidato;
         this.indiceSfidante = 0;
         this.indiceSfidato = 0;
-        this.traduzioneSfidante  = new ArrayList<>(parolePerGioco);
-        this.traduzioneSfidato = new ArrayList<>(parolePerGioco);
+        this.traduzioneSfidante  = new CopyOnWriteArrayList<String>();
+        this.traduzioneSfidato = new CopyOnWriteArrayList<String>();
+        inizzializzaArray(traduzioneSfidante);
+        inizzializzaArray(traduzioneSfidato);
         this.randomWords = randomWords;
         this.sfidante = sfidante;
         int port = sfidante.getUserChannel().socket().getLocalPort();
@@ -130,17 +137,27 @@ public class ChallengeThread extends Thread{
                 }else {
                     if (finishSfidato) {
                         // ha finito solo lo sfidato
-                        toSfidante += calcolaPunteggio(traduzioneSfidante, punteggioSfidante) + calcolaVincitore("sfidante");
+                        toSfidante += calcolaPunteggio(traduzioneSfidante, sfidante.getNickname()) + calcolaVincitore("sfidante");
                         toSfidato += calcolaVincitore("sfidato");
-                    } else {
+                    } else if(finishSfidato){
                         // ha finito solo lo sfidante
                         toSfidante += calcolaVincitore("sfidante");
-                        toSfidato += calcolaPunteggio(traduzioneSfidato, punteggioSfidato) + calcolaVincitore("sfidato");
+                        toSfidato += calcolaPunteggio(traduzioneSfidato, sfidato.getNickname()) + calcolaVincitore("sfidato");
+                    }else {
+                        // non ha finito nessuno dei due
+                        System.out.println("Sfidante:");
+                        toSfidante += calcolaPunteggio(traduzioneSfidante, sfidante.getNickname()) + calcolaVincitore("sfidante");
+                        System.out.println("Sfidato:");
+                        toSfidato += calcolaPunteggio(traduzioneSfidato, sfidato.getNickname()) + calcolaVincitore("sfidato");
+
                     }
                 }
-                channelSfidato.register(selector, SelectionKey.OP_WRITE, new ReadingByteBuffer(toSfidato));
-                channelSfidante.register(selector,SelectionKey.OP_WRITE, new ReadingByteBuffer(toSfidante));
-                sendResults();
+                System.out.println("Punteggio sfidante: "+punteggioSfidante+ " Punteggio sfidato: "+punteggioSfidato);
+                aggiornaClassifica();
+                //channelSfidato.register(selector, SelectionKey.OP_WRITE, new ReadingByteBuffer(toSfidato));
+                //channelSfidante.register(selector,SelectionKey.OP_WRITE, new ReadingByteBuffer(toSfidante));
+                //sendResults();
+
                 // salvare su JSON il punteggio dei due giocatori
             } catch (ClosedChannelException e) {
                 e.printStackTrace();
@@ -199,6 +216,7 @@ public class ChallengeThread extends Thread{
                     if (currentKey.isWritable()) {
                         System.out.println("-------WRITE REQUEST------");
                         writeRequestFinal(currentKey);
+                        currentKey.cancel();
                         if(finish==2)
                             terminateThread();
                         finish++;
@@ -311,24 +329,26 @@ public class ChallengeThread extends Thread{
             // per riconoscere chi mi ha scritto, devo confrontare i canali!!!
             if(sfidante.getUserChannel().equals(client)) {
                 indiceSfidante++;
-                traduzioneSfidante.add(risposta);
                 if(indiceSfidante == 3){
                     finishSfidante = true;
-                    attachment.updateMessagge(calcolaPunteggio(traduzioneSfidante, punteggioSfidante)+EOM);
+                    attachment.updateMessagge(calcolaPunteggio(traduzioneSfidante, sfidante.getNickname())+EOM);
                 }
-                if(indiceSfidante < 3)
+                if(indiceSfidante < 3) {
+                    traduzioneSfidante.add(indiceSfidante-1,risposta);
                     attachment.updateMessagge(randomWords.get(indiceSfidante) + EOM);
+                }
             }
             else {
                 indiceSfidato++;
-                traduzioneSfidato.add(risposta);
                 if(indiceSfidato == 3){
                     finishSfidato = true;
-                    attachment.updateMessagge(calcolaPunteggio(traduzioneSfidato, punteggioSfidato)+EOM);
+                    attachment.updateMessagge(calcolaPunteggio(traduzioneSfidato, sfidato.getNickname())+EOM);
 
                 }
-                if(indiceSfidato < 3)
+                if(indiceSfidato < 3) {
+                    traduzioneSfidato.add(indiceSfidato-1,risposta);
                     attachment.updateMessagge(randomWords.get(indiceSfidato) + EOM);
+                }
             }
 
             newReadRequest.interestOps(SelectionKey.OP_WRITE);
@@ -373,31 +393,41 @@ public class ChallengeThread extends Thread{
         Thread.interrupted();
     }
 
-    private String calcolaPunteggio(ArrayList<String> risposteUser, int punteggio) throws InterruptedException {
+    // restituisce la stringa parziale finale per user (il rislutato della propria sfida)
+    private String calcolaPunteggio(CopyOnWriteArrayList<String> risposteUser,String user) throws InterruptedException {
         int i;
-        punteggio = 0;
         int sbagliate =0;
+        int punteggio = 0;
+        System.out.println("Dimensione array user: "+risposteUser.size()+" ,dimensione array paroletradote: "+paroleTradotte.size());
         for(i=0; i<parolePerGioco; i++){
             try {
-                System.out.println("Dimensione array user: "+risposteUser.size()+" ,dimensione array paroletradote: "+paroleTradotte.size());
-                if (risposteUser.get(i).equalsIgnoreCase(paroleTradotte.get(i)))
+                System.out.print(risposteUser.get(i)+" VS "+paroleTradotte.get(i));
+                if (risposteUser.get(i).equalsIgnoreCase(paroleTradotte.get(i))) {
+                    System.out.println("    ->TRUE");
                     punteggio++;
-                else
+                }
+                else {
+                    System.out.println("    ->FALSE");
                     sbagliate++;
+                }
             }catch (NullPointerException e){
                 e.printStackTrace();
-                continue;
             }catch (IndexOutOfBoundsException e){
                 System.out.println("Indice: "+i);
                 e.printStackTrace();
                 Thread.sleep(2000);
             }
         }
+        if(user.equals(sfidante.getNickname()))
+            punteggioSfidante = punteggio;
+        else
+            punteggioSfidato = punteggio;
+        System.out.println("NUOVO punteggio: "+punteggio);
         return  "Hai tradotto correttamente " + punteggio + " ,ne hai sbagliate " + sbagliate +
                 " e non risposto a " + (parolePerGioco-i) + ".\nHai totalizzato " + punteggio +" punti.\n";
     }
 
-    // restituisce la stringa che deve essere mandata a user, e aggiorna il punteggio(locale) in base al vincitore
+    // restituisce la stringa finale (risultato avversario e partita ), aggiorna il punteggio(locale) in base al vincitore
     private String calcolaVincitore(String user){
         String result = "";
         if(user.equals("sfidato")){
@@ -422,8 +452,60 @@ public class ChallengeThread extends Thread{
         }
     }
 
+    // aggiorna la classifica punti dei due sfidanti
+    private void aggiornaClassifica()throws IOException{
+        JSONParser parser = new JSONParser();
+        Object obj=null;
+
+        try {
+            obj = parser.parse(new FileReader("ClassificaPunti.json"));
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        JSONArray jsonArray = (JSONArray) obj;
+        boolean trovato = false;
+
+
+        for(int i=0; i<jsonArray.size(); i++){
+            JSONObject jsonObject = (JSONObject) jsonArray.get(i);
+            if(jsonObject.get("nickname").equals(sfidante.getNickname())){
+                obj = jsonObject.get("punteggio");
+                int punteggio = Integer.parseInt(obj.toString()) + punteggioSfidante;
+                jsonArray.remove(jsonObject);
+                i--;
+                JSONObject nuovoValore= new JSONObject();
+                nuovoValore.put("nickname",sfidante.getNickname());
+                nuovoValore.put("punteggio",punteggio);
+                jsonArray.add(nuovoValore);
+                System.out.println("Punteggio: "+punteggio);
+                if(trovato==true)break;
+                trovato = true;
+            }
+            if(jsonObject.get("nickname").equals(sfidato.getNickname())){
+                obj = jsonObject.get("punteggio");
+                int punteggio = Integer.parseInt(obj.toString()) + punteggioSfidato;
+                jsonArray.remove(jsonObject);
+                i--;
+                JSONObject nuovoValore= new JSONObject();
+                nuovoValore.put("nickname",sfidato.getNickname());
+                nuovoValore.put("punteggio",punteggio);
+                jsonArray.add(nuovoValore);
+                System.out.println("Punteggio: "+punteggio);
+                if(trovato==true)break;
+                trovato = true;
+            }
+        }
+
+        File file= new File("ClassificaPunti.json");
+        FileWriter fileWriter= new FileWriter(file);
+        fileWriter.write(jsonArray.toJSONString());
+        fileWriter.flush();
+        fileWriter.close();
+    }
+
+    // richiesta al sito delle traduzioni di alcune parole
     private void traduci()throws IOException,InterruptedException, ParseException {
-        paroleTradotte = new ArrayList<>(parolePerGioco);
+        paroleTradotte = new CopyOnWriteArrayList<String>();
         BufferedReader in = null;
         URL url = null;
         HttpURLConnection connection = null;
@@ -446,9 +528,7 @@ public class ChallengeThread extends Thread{
 
             jsonObject = (JSONObject) parser.parse(risposta);
             jsonObject = (JSONObject) jsonObject.get("responseData");
-            //System.out.println(" responseData: "+jsonObject.toJSONString());
             risposta = (String) jsonObject.get("translatedText");
-            //System.out.println("La risposta è: " + risposta);
             paroleTradotte.add(risposta);
 
         }
