@@ -1,4 +1,3 @@
-import javafx.concurrent.Task;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -11,21 +10,11 @@ import java.nio.channels.*;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Set;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.net.*;
-import java.nio.ByteBuffer;
-import java.nio.channels.*;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Set;
 import java.util.concurrent.*;
 
 public class ChallengeThread extends Thread{
@@ -97,11 +86,12 @@ public class ChallengeThread extends Thread{
         catch (IOException e){
             e.printStackTrace();
         }
-        String risposta=null;
+        String risposta="";
         dati = packet.getData();
         risposta = new String(dati, 0, packet.getLength());
         System.out.println("Pacchetto ricevuto: "+risposta);
         DSocket.close();
+
         try {
             selector = Selector.open();
         } catch (IOException e) {
@@ -110,26 +100,28 @@ public class ChallengeThread extends Thread{
         if(risposta.equals("si")){
             risposta = "Via alla sfida di traduzione:\n"+randomWords.get(0)+EOM;
             SocketChannel channelSfidato = sfidato.getUserChannel();
-            SelectionKey keySfidato = sfidato.getKey();
+            SelectionKey keySfidato = sfidato.getServerKey();
             keySfidato.interestOps(0);
             try {
                 traduci();
                 channelSfidato.register(selector, SelectionKey.OP_WRITE, new ReadingByteBuffer(risposta));
                 SocketChannel channelSfidante = sfidante.getUserChannel();
                 channelSfidante.register(selector,SelectionKey.OP_WRITE,new ReadingByteBuffer(risposta));
-                startTime = System.currentTimeMillis();
+                //startTime = System.currentTimeMillis();
                 ExecutorService executor = Executors.newSingleThreadExecutor();
-                Future<String> future = executor.submit(new Task());
+                Task sfida = new Task();
+                Future<String> future = executor.submit(sfida);
                 try{
                     future.get(10, TimeUnit.SECONDS);
                 }catch (TimeoutException | InterruptedException | ExecutionException e){
+                    //sfida.saveAndSet();
                     future.cancel(true);
                     System.out.println("timeout scaduto");
                 }
 
                 // calcolo chi ha vinto e mando il risultato
-                String toSfidante = null;
-                String toSfidato = null;
+                String toSfidante = "";
+                String toSfidato = "";
                 System.out.println("DIM sfidato: "+traduzioneSfidato.size()+" ,DIM sfidante: "+traduzioneSfidante.size());
                 if(finishSfidante && finishSfidato){
                     toSfidante = calcolaVincitore("sfidante");
@@ -154,11 +146,29 @@ public class ChallengeThread extends Thread{
                 }
                 System.out.println("Punteggio sfidante: "+punteggioSfidante+ " Punteggio sfidato: "+punteggioSfidato);
                 aggiornaClassifica();
-                //channelSfidato.register(selector, SelectionKey.OP_WRITE, new ReadingByteBuffer(toSfidato));
-                //channelSfidante.register(selector,SelectionKey.OP_WRITE, new ReadingByteBuffer(toSfidante));
+                //Thread.sleep(5000);
+                SelectionKey key = sfidante.getChallengeKey();
+                ReadingByteBuffer buffer =(ReadingByteBuffer) key.attachment();
+                buffer.clear();
+                buffer.updateMessagge(toSfidante+EOM);
+
+                writeRequestFinal(key);
+
+                key = sfidato.getChallengeKey();
+                buffer = (ReadingByteBuffer) key.attachment();
+                buffer.clear();
+                buffer.updateMessagge(toSfidato+EOM);
+
+                writeRequestFinal(key);
+
+                sfidante.getServerKey().interestOps(SelectionKey.OP_READ);
+                sfidato.getServerKey().interestOps(SelectionKey.OP_READ);
+                sfidato.getServerKey().selector().wakeup();
+                //setFinal(toSfidante,toSfidato);
                 //sendResults();
 
-                // salvare su JSON il punteggio dei due giocatori
+                Thread.interrupted();
+                System.out.println("QUESTA E' UNA PROVA");
             } catch (ClosedChannelException e) {
                 e.printStackTrace();
             } catch (InterruptedException e){
@@ -180,77 +190,55 @@ public class ChallengeThread extends Thread{
         }
     }
 
+    // aggiorno il messaggio che il threadSfida deve mandare ai due sfidanti
+    // e li metto in write
+    private void setFinal(String toSfidante, String toSfidato)throws IOException{
+        int i=0;
+        SelectionKey key =sfidante.getChallengeKey();
+        key.interestOps(SelectionKey.OP_WRITE);
+        System.out.println(key.isWritable());
+        selector.wakeup();
+        key = sfidato.getChallengeKey();
+        key.interestOps(SelectionKey.OP_WRITE);
+        System.out.println(key.isWritable());
+        selector.wakeup();
+        Set<SelectionKey> selectedKeys = selector.selectedKeys();
+        System.out.println("Ci sono "+selectedKeys.size()+" chiavi nel selettore");
+
+        selector.select();
+        Iterator<SelectionKey> iterator = selectedKeys.iterator();
+        while (iterator.hasNext()){
+            SelectionKey currentKey = iterator.next();
+            iterator.remove();
+
+            SocketChannel client = (SocketChannel) currentKey.channel();
+            ReadingByteBuffer buffer = (ReadingByteBuffer) currentKey.attachment();
+            System.out.println("Messaggio "+buffer.getMessage());
+            buffer.clear();
+            if(client.equals(sfidante.getUserChannel()))
+                buffer.updateMessagge(toSfidante);
+            else
+                buffer.updateMessagge(toSfidato);
+            currentKey.interestOps(SelectionKey.OP_WRITE);
+            writeRequestFinal(currentKey);
+        }
+        System.out.println("Distruggo il ThreadSfida");
+        selector.close();
+        Thread.interrupted();
+
+    }
+
     private void responseAndTerminate()throws IOException{
         String risposta = "Richiesta di sfida non accettata"+EOM;
         SocketChannel channelSfidante = sfidante.getUserChannel();
 
-        sfidante.getKey().interestOps(SelectionKey.OP_READ);
+        sfidante.getServerKey().interestOps(SelectionKey.OP_READ);
         // sveglio il selettore del server e gli dico che ha una nuova
         // chiave pronta per una lattura
-        sfidante.getKey().selector().wakeup();
-        System.out.println(" interestOps messo a READ " + sfidante.getKey().isReadable());
+        sfidante.getServerKey().selector().wakeup();
+        System.out.println(" interestOps messo a READ " + sfidante.getServerKey().isReadable());
         ByteBuffer buffer = ByteBuffer.wrap(risposta.getBytes());
         channelSfidante.write(buffer);
-    }
-
-    // ciclo multipexing per mandare i risultati finali
-    private void sendResults()throws IOException{
-
-        while(true){
-            selector.select();
-
-            Set<SelectionKey> selectedKeys = selector.selectedKeys();
-            Iterator<SelectionKey> iterator = selectedKeys.iterator();
-
-            int finish = 0;
-            while(iterator.hasNext()){
-                SelectionKey currentKey = iterator.next();
-                iterator.remove();
-                try {
-                    if (!currentKey.isValid())
-                        continue;
-                    if (currentKey.isReadable()) {
-                        System.out.println("------READ REQUEST------");
-                        readRequestFinal(currentKey);
-                    }
-                    if (currentKey.isWritable()) {
-                        System.out.println("-------WRITE REQUEST------");
-                        writeRequestFinal(currentKey);
-                        currentKey.cancel();
-                        if(finish==2)
-                            terminateThread();
-                        finish++;
-                    }
-                }catch (IOException  e){
-                    System.out.println("------TERMINE CONNESSIONE------");
-                    SocketChannel client = (SocketChannel) currentKey.channel();
-                    currentKey.cancel();
-                    client.close();
-                }
-            }
-        }
-    }
-
-    private void readRequestFinal(SelectionKey currentKey)throws IOException{
-        SocketChannel client = (SocketChannel) currentKey.channel();
-        ReadingByteBuffer attachment = (ReadingByteBuffer) currentKey.attachment();
-        attachment.getByteBuffer().clear();
-        int num = client.read(attachment.getByteBuffer());
-        //System.out.println("numero byte letti: "+num);
-
-        //vedo quando il client termina improvvisamente
-        if(num==-1)throw new IOException();
-
-        // Entro dentro quando ho finito di leggere
-        if(attachment.updateOnRead()) {
-            String risposta = attachment.getMessage();
-            attachment.clear();
-            System.out.println(GREEN+"Messaggio arrivato al server: " + risposta +RESET);
-            // per riconoscere chi mi ha scritto, devo confrontare i canali!!!
-
-            currentKey.interestOps(SelectionKey.OP_WRITE);
-            attachment.clear();
-        }
     }
 
     private void writeRequestFinal(SelectionKey currentKey)throws IOException{
@@ -270,17 +258,22 @@ public class ChallengeThread extends Thread{
         attachment.updateMessagge("");
         attachment.clear();
 
-        System.out.println(BLUE+"Messaggio che invia il ThreadSfida: "+risposta+RESET);
+        System.out.println(BLUE+"Messaggio finale che invia il ThreadSfida: "+risposta+RESET);
         currentKey.channel();
     }
 
     class Task implements Callable<String> {
         @Override
         public String call() throws Exception {
+            boolean save = false;
             while( !(finishSfidato && finishSfidante)){
                 selector.select();
 
                 Set<SelectionKey> selectedKeys = selector.selectedKeys();
+                if(!save) {
+                    saveAndSet(selectedKeys.iterator());
+                    save = true;
+                }
                 Iterator<SelectionKey> iterator = selectedKeys.iterator();
 
                 if(finishSfidante && finishSfidato) break;
@@ -308,6 +301,20 @@ public class ChallengeThread extends Thread{
                 }
             }
             return "TIMEOUT!";
+        }
+
+        // salvo le chiavi nella struttura dei due sfidanti
+        public void saveAndSet(Iterator<SelectionKey> iterator)throws IOException{
+            while (iterator.hasNext()) {
+                SelectionKey currentKey = iterator.next();
+                iterator.remove();
+                if (currentKey.channel().equals(sfidante.getUserChannel()))
+                    sfidante.setChallengeKey(currentKey);
+
+                else
+                    sfidato.setChallengeKey(currentKey);
+            }
+
         }
     }
 
@@ -374,22 +381,22 @@ public class ChallengeThread extends Thread{
         attachment.updateMessagge("");
         attachment.clear();
 
+        System.out.println(BLUE+"Messaggio che invia il ThreadSfida: "+nuovaParola+RESET);
+        currentKey.interestOps(SelectionKey.OP_READ);
+
         if(client.equals(sfidante.getUserChannel()) && finishSfidante)
             currentKey.interestOps(0);
 
         if(client.equals(sfidato.getUserChannel()) && finishSfidato)
             currentKey.interestOps(0);
 
-
-        System.out.println(BLUE+"Messaggio che invia il ThreadSfida: "+nuovaParola+RESET);
-        currentKey.interestOps(SelectionKey.OP_READ);
     }
 
     // termina il thread e mette le chiavi dei due giocatori nel server in read
     private void terminateThread() throws IOException {
         selector.close();
-        sfidante.getKey().interestOps(SelectionKey.OP_READ);
-        sfidato.getKey().interestOps(SelectionKey.OP_READ);
+        sfidante.getServerKey().interestOps(SelectionKey.OP_READ);
+        sfidato.getServerKey().interestOps(SelectionKey.OP_READ);
         Thread.interrupted();
     }
 
@@ -415,7 +422,6 @@ public class ChallengeThread extends Thread{
             }catch (IndexOutOfBoundsException e){
                 System.out.println("Indice: "+i);
                 e.printStackTrace();
-                Thread.sleep(2000);
             }
         }
         if(user.equals(sfidante.getNickname()))
@@ -431,13 +437,16 @@ public class ChallengeThread extends Thread{
     private String calcolaVincitore(String user){
         String result = "";
         if(user.equals("sfidato")){
-            result = "Il tuo avversario ha totalizzato " + punteggioSfidato + "punti\n";
+            result = "Il tuo avversario ha totalizzato " + punteggioSfidato + " punti\n";
             if(punteggioSfidato>punteggioSfidante) {
                 punteggioSfidato += 3;
                 result += "Congratulazioni, hai vinto! Hai guadagnato 3 punti extra, per un totale di " + punteggioSfidato + " punti!";
             }
             else
-                result +="Peccato, hai perso.......  Hai guadagnato "+ punteggioSfidato+ " punti!";
+                if(punteggioSfidato<punteggioSfidante)
+                    result += "Peccato, hai perso.......  Hai guadagnato "+ punteggioSfidato+ " punti!";
+                else
+                    result += "Pareggio, poteva andare meglio! Hai guadagnato "+punteggioSfidato+" punti!";
             return  result;
         }
         else{
@@ -447,13 +456,16 @@ public class ChallengeThread extends Thread{
                 result += "Congratulazioni, hai vinto! Hai guadagnato 3 punti extra, per un totale di " + punteggioSfidante + " punti!";
             }
             else
-                result +="Peccato, hai perso.......  Hai guadagnato "+ punteggioSfidante + " punti!";
+                if(punteggioSfidante<punteggioSfidato)
+                    result +="Peccato, hai perso.......  Hai guadagnato "+ punteggioSfidante + " punti!";
+                else
+                    result += "Pareggio, poteva andare meglio! Hai guadagnato "+punteggioSfidante+" punti!";
             return result;
         }
     }
 
     // aggiorna la classifica punti dei due sfidanti
-    private void aggiornaClassifica()throws IOException{
+    private synchronized void aggiornaClassifica()throws IOException{
         JSONParser parser = new JSONParser();
         Object obj=null;
 
@@ -538,4 +550,64 @@ public class ChallengeThread extends Thread{
 
     }
 
+    // ciclo multipexing per mandare i risultati finali
+    /*private void sendResults()throws IOException{
+        selector.wakeup();
+
+        while(true){
+            selector.select();
+
+            Set<SelectionKey> selectedKeys = selector.selectedKeys();
+            Iterator<SelectionKey> iterator = selectedKeys.iterator();
+
+            int finish = 0;
+            while(iterator.hasNext()){
+                SelectionKey currentKey = iterator.next();
+                iterator.remove();
+                try {
+                    if (!currentKey.isValid())
+                        continue;
+                    if (currentKey.isReadable()) {
+                        System.out.println("------READ REQUEST------");
+                        readRequestFinal(currentKey);
+                    }
+                    if (currentKey.isWritable()) {
+                        System.out.println("-------WRITE REQUEST------");
+                        writeRequestFinal(currentKey);
+                        currentKey.cancel();
+                        if(finish==2)
+                            terminateThread();
+                        finish++;
+                    }
+                }catch (IOException  e){
+                    System.out.println("------TERMINE CONNESSIONE------");
+                    SocketChannel client = (SocketChannel) currentKey.channel();
+                    currentKey.cancel();
+                    client.close();
+                }
+            }
+        }
+    }*/
+
+    /*private void readRequestFinal(SelectionKey currentKey)throws IOException{
+        SocketChannel client = (SocketChannel) currentKey.channel();
+        ReadingByteBuffer attachment = (ReadingByteBuffer) currentKey.attachment();
+        attachment.getByteBuffer().clear();
+        int num = client.read(attachment.getByteBuffer());
+        //System.out.println("numero byte letti: "+num);
+
+        //vedo quando il client termina improvvisamente
+        if(num==-1)throw new IOException();
+
+        // Entro dentro quando ho finito di leggere
+        if(attachment.updateOnRead()) {
+            String risposta = attachment.getMessage();
+            attachment.clear();
+            System.out.println(GREEN+"Messaggio arrivato al server: " + risposta +RESET);
+            // per riconoscere chi mi ha scritto, devo confrontare i canali!!!
+
+            currentKey.interestOps(SelectionKey.OP_WRITE);
+            attachment.clear();
+        }
+    }*/
 }

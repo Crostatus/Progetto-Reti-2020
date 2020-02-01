@@ -177,6 +177,7 @@ public class Client {
         System.out.println("Aspetto la risposta finale");
         scanner.close();
         riceviRisposta();
+        inAMatch.set(false);
     }
 
     // restituisce true se il controllo va a buon fine

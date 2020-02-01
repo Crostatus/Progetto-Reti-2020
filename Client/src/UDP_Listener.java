@@ -84,6 +84,7 @@ public class UDP_Listener extends Thread{
         System.out.println("Aspetto la risposta finale");
         scanner.close();
         riceviRisposta();
+        inAMatch.set(false);
     }
     // invia la richiesta al server
     private void inviaRichiesta(String richiesta) throws IOException {
