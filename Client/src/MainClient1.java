@@ -19,7 +19,7 @@ public class MainClient1 {
         //prova.registra("andrea","prova98");
         prova.login("andrea", "prova98");
         //prova.aggiungi_amico("andrea","alessandro");
-        prova.sfida("andrea", "alessandro");
+        prova.sfida("andrea", "alessandro","");
         //Thread.sleep(10000);
         prova.lista_amici("andrea");
         /*boolean logout = false;

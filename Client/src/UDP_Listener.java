@@ -1,4 +1,4 @@
-import com.sun.org.apache.bcel.internal.generic.Select;
+//import com.sun.org.apache.bcel.internal.generic.Select;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -17,10 +17,10 @@ public class UDP_Listener extends Thread{
     private SocketChannel client;
     private ByteBuffer buffer;
     private  String EOM="_EOM";
-    private static final String RESET = "\u001B[0m";
+    /*private static final String RESET = "\u001B[0m";
     private static final String BLUE = "\033[0;34m";
     private static final String GREEN = "\u001B[32m";
-    private static final String RED = "\u001B[31m";
+    private static final String RED = "\u001B[31m";*/
     private long startTime;
 
     public UDP_Listener(AtomicBoolean bool,int udp, String nickname, SocketChannel client)throws SocketException {
@@ -66,7 +66,11 @@ public class UDP_Listener extends Thread{
         clientSocket.close();
     }
 
-    private void gioca()throws IOException{
+    private void gioca(){
+
+    }
+
+   /* private void gioca()throws IOException{
         int i;
         Scanner scanner = new Scanner(System.in);
         for(i=0; i<3; i++){
@@ -85,14 +89,15 @@ public class UDP_Listener extends Thread{
         scanner.close();
         riceviRisposta();
         inAMatch.set(false);
-    }
+    }*/
+
     // invia la richiesta al server
     private void inviaRichiesta(String richiesta) throws IOException {
         byte[] data = richiesta.getBytes();
         buffer=ByteBuffer.wrap(data);
         while(buffer.hasRemaining())
             client.write(buffer);
-        System.out.println(BLUE+"Ho inviato: " + richiesta+RESET);
+        System.out.println("Ho inviato: " + richiesta);
         buffer.clear();
     }
 
@@ -111,7 +116,7 @@ public class UDP_Listener extends Thread{
         }
         result = result.replace("_EOM", "");
 
-        System.out.println(GREEN + "[" + nickname + "] Nuova parola da tradurre: " + result+RESET);
+        System.out.println("[" + nickname + "] Nuova parola da tradurre: " + result);
         return result;
     }
 

@@ -18,9 +18,9 @@ import java.io.PrintWriter;
 import java.util.concurrent.*;
 
 public class ChallengeThread extends Thread{
-    public static final String RESET = "\u001B[0m";
+    /*public static final String RESET = "\u001B[0m";
     public static final String BLUE = "\033[0;34m";
-    public static final String GREEN = "\u001B[32m";
+    public static final String GREEN = "\u001B[32m";*/
     public static final int parolePerGioco =3;
     private CopyOnWriteArrayList<String> traduzioneSfidante;
     private CopyOnWriteArrayList<String> traduzioneSfidato;
@@ -112,7 +112,7 @@ public class ChallengeThread extends Thread{
                 Task sfida = new Task();
                 Future<String> future = executor.submit(sfida);
                 try{
-                    future.get(10, TimeUnit.SECONDS);
+                    future.get(20, TimeUnit.SECONDS);
                 }catch (TimeoutException | InterruptedException | ExecutionException e){
                     //sfida.saveAndSet();
                     future.cancel(true);
@@ -122,7 +122,7 @@ public class ChallengeThread extends Thread{
                 // calcolo chi ha vinto e mando il risultato
                 String toSfidante = "";
                 String toSfidato = "";
-                System.out.println("DIM sfidato: "+traduzioneSfidato.size()+" ,DIM sfidante: "+traduzioneSfidante.size());
+                //System.out.println("DIM sfidato: "+traduzioneSfidato.size()+" ,DIM sfidante: "+traduzioneSfidante.size());
                 if(finishSfidante && finishSfidato){
                     toSfidante = calcolaVincitore("sfidante");
                     toSfidato = calcolaVincitore("sfidato");
@@ -131,7 +131,7 @@ public class ChallengeThread extends Thread{
                         // ha finito solo lo sfidato
                         toSfidante += calcolaPunteggio(traduzioneSfidante, sfidante.getNickname()) + calcolaVincitore("sfidante");
                         toSfidato += calcolaVincitore("sfidato");
-                    } else if(finishSfidato){
+                    } else if(finishSfidante){
                         // ha finito solo lo sfidante
                         toSfidante += calcolaVincitore("sfidante");
                         toSfidato += calcolaPunteggio(traduzioneSfidato, sfidato.getNickname()) + calcolaVincitore("sfidato");
@@ -144,13 +144,14 @@ public class ChallengeThread extends Thread{
 
                     }
                 }
-                System.out.println("Punteggio sfidante: "+punteggioSfidante+ " Punteggio sfidato: "+punteggioSfidato);
+                //System.out.println("Punteggio sfidante: "+punteggioSfidante+ " Punteggio sfidato: "+punteggioSfidato);
                 aggiornaClassifica();
                 //Thread.sleep(5000);
                 SelectionKey key = sfidante.getChallengeKey();
                 ReadingByteBuffer buffer =(ReadingByteBuffer) key.attachment();
                 buffer.clear();
                 buffer.updateMessagge(toSfidante+EOM);
+                System.out.println("cosa succede: "+toSfidante);
 
                 writeRequestFinal(key);
 
@@ -258,7 +259,7 @@ public class ChallengeThread extends Thread{
         attachment.updateMessagge("");
         attachment.clear();
 
-        System.out.println(BLUE+"Messaggio finale che invia il ThreadSfida: "+risposta+RESET);
+        System.out.println("Messaggio finale che invia il ThreadSfida: "+risposta);
         currentKey.channel();
     }
 
@@ -332,7 +333,7 @@ public class ChallengeThread extends Thread{
         if(attachment.updateOnRead()) {
             String risposta = attachment.getMessage();
             attachment.clear();
-            System.out.println(GREEN+"Messaggio arrivato al server: " + risposta +RESET);
+            System.out.println("Messaggio arrivato al server: " + risposta );
             // per riconoscere chi mi ha scritto, devo confrontare i canali!!!
             if(sfidante.getUserChannel().equals(client)) {
                 indiceSfidante++;
@@ -381,7 +382,7 @@ public class ChallengeThread extends Thread{
         attachment.updateMessagge("");
         attachment.clear();
 
-        System.out.println(BLUE+"Messaggio che invia il ThreadSfida: "+nuovaParola+RESET);
+        System.out.println("Messaggio che invia il ThreadSfida: "+nuovaParola);
         currentKey.interestOps(SelectionKey.OP_READ);
 
         if(client.equals(sfidante.getUserChannel()) && finishSfidante)
@@ -450,7 +451,7 @@ public class ChallengeThread extends Thread{
             return  result;
         }
         else{
-            result = "Il tuo avversario ha totalizzato " + punteggioSfidante + "punti\n";
+            result = "Il tuo avversario ha totalizzato " + punteggioSfidante + " punti\n";
             if(punteggioSfidante>punteggioSfidato) {
                 punteggioSfidante += 3;
                 result += "Congratulazioni, hai vinto! Hai guadagnato 3 punti extra, per un totale di " + punteggioSfidante + " punti!";
