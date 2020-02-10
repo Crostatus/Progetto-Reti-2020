@@ -343,6 +343,8 @@ public class Client {
             System.out.println("Sto per cambiare il panel!");
             resultPanel.setMyScore(receiveWord);
             resultPanel.getPanel().repaint();
+            // controllare la ricezione della stringa finale
+           // resultPanel.waitFinalResult();
         }
         else{
             System.out.println("Mi arriva: "+receiveWord);

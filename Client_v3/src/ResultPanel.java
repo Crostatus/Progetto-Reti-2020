@@ -53,10 +53,8 @@ public class ResultPanel {
 
     }
 
-    public void setMyScore(String message){
-        scoreText.setText(message);
-        resultPanel.repaint();
-        if(!message.contains("Hai guadagnato")){
+    public void waitFinalResult(){
+        if(!scoreText.getText().contains("Hai guadagnato")){
             try {
                 String finalResult = user.riceviRisposta();
                 resultField.setText(finalResult);
@@ -67,9 +65,15 @@ public class ResultPanel {
                 user.forceLogout();
                 z.printStackTrace();
             }
+            System.out.println("Qui ci arrivo");
 
         }
         backButton.setEnabled(true);
+        resultPanel.repaint();
+    }
+
+    public void setMyScore(String message){
+        scoreText.setText(message);
         resultPanel.repaint();
     }
 
