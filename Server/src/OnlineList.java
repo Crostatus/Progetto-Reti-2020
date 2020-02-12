@@ -122,10 +122,11 @@ public class OnlineList{
     public class OnlineUser {
     private SocketChannel userChannel;
     private String nickname;
-    private SelectionKey key;
+    private SelectionKey serverKey;
+    private SelectionKey challengeKey;
     // aggiungere porta UDP che mi dice dove il client vuole che invio i dati in UDP
 
-    public OnlineUser(String nickname, SocketChannel userChannel, SelectionKey key) throws NullPointerException {
+    public OnlineUser(String nickname, SocketChannel userChannel, SelectionKey serverKey) throws NullPointerException {
         if (nickname == null)
             throw new NullPointerException("nickname =null");
         if (userChannel == null)
@@ -133,11 +134,17 @@ public class OnlineList{
 
         this.nickname = nickname;
         this.userChannel = userChannel;
-        this.key = key;
+        this.serverKey = serverKey;
 
     }
 
-    public SelectionKey getKey(){ return key;}
+    public void setChallengeKey(SelectionKey key){
+        this.challengeKey = key;
+    }
+
+    public SelectionKey getChallengeKey(){return challengeKey;}
+
+    public SelectionKey getServerKey(){ return serverKey;}
 
     // returna il socketChannel dell'utente
     public SocketChannel getUserChannel() {

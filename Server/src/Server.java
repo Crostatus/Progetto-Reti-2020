@@ -9,13 +9,14 @@ import java.nio.channels.*;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Iterator;
+import java.util.Objects;
 import java.util.Set;
 import java.util.StringTokenizer;
 
 public class Server {
-    public static final String RESET = "\u001B[0m";
+    /*public static final String RESET = "\u001B[0m";
     public static final String BLUE = "\033[0;34m";
-    public static final String GREEN = "\u001B[32m";
+    public static final String GREEN = "\u001B[32m";*/
     private final WordToTraslate dizionario;
     private  ServerSocketChannel serverSocketChannel;
     private  Selector selector;
@@ -106,7 +107,7 @@ public class Server {
         // Entro dentro quando ho finito di leggere
         if(attachment.updateOnRead()) {
             String richiesta = attachment.getMessage();
-            System.out.println(GREEN+"Messaggio arrivato al server: " + richiesta+RESET);
+            System.out.println("Messaggio arrivato al server: " + richiesta);
             String risposta = analizzaRichiesta(richiesta,client,newReadRequest)+EOM;
 
 
@@ -133,7 +134,7 @@ public class Server {
             client.write(buffer);
         attachment.updateMessagge("");
 
-        System.out.println(BLUE+"Messaggio che invia il server: "+risposta+RESET);
+        System.out.println("Messaggio che invia il server: "+risposta);
         if(risposta.equals("logout effettuato_EOM") || attachment.getCodiceErroreLogin() )
             currentKey.cancel();
         else
@@ -193,7 +194,7 @@ public class Server {
                         return "Errore: utente non esistente";
 
 
-                    return "Erroe: password errata"; //Rifiuta richiesta di login e rispondi male.
+                    return "Errore: password errata"; //Rifiuta richiesta di login e rispondi male.
                 }
             }
             case "logout": {
@@ -252,9 +253,90 @@ public class Server {
                 }
 
             }
+            case "mostra_punteggio":{
+                String nickname = tokenizer.nextToken();
+                int punteggio = mostraPunteggio(nickname, currentKey);
+                if(punteggio == -1)
+                    return "Errore: Controllare nickname inserito";
+                return String.valueOf(punteggio);
+
+
+            }
+            case "mostra_classifica":{
+                String nickname = tokenizer.nextToken();
+                JSONObject jsonObject = listaAmici(nickname,currentKey);
+                if(jsonObject==null)
+                    return "Errore: Controllare nickname inserito";
+                return classifica(jsonObject,nickname).toJSONString();
+            }
             default:
                 return "comando non valido";
         }
+    }
+
+    private JSONArray classifica(JSONObject listaAmici, String nickname)throws FileNotFoundException,ParseException,IOException{
+        JSONParser parser = new JSONParser();
+        Object obj = null;
+
+        obj = parser.parse(new FileReader("ClassificaPunti.json"));
+        JSONArray listaPunti = (JSONArray) obj;
+        Iterator<JSONObject> finalIterator = listaPunti.iterator();
+        JSONArray listaAmiciJson = (JSONArray) listaAmici.get("lista_amici");
+        Iterator<JSONObject> iteratorFriendsList = listaAmiciJson.iterator();
+
+        JSONObject friend = null;
+        String friendNickname = null;
+        JSONArray finalResultArray = new JSONArray();
+
+        for(Object currentObj :  listaPunti){
+            JSONObject currentjson = (JSONObject) currentObj;
+            if(currentjson.get("nickname").equals(nickname)){
+                finalResultArray.add(currentjson);
+                break;
+            }
+        }
+
+
+        while (iteratorFriendsList.hasNext()){
+            friend = iteratorFriendsList.next();
+            iteratorFriendsList.remove();
+            friendNickname = friend.get("amico").toString();
+            System.out.print(friendNickname+" + ");
+            finalIterator = listaPunti.iterator();
+            while (finalIterator.hasNext()){
+                JSONObject currentFriend = finalIterator.next();
+                if(currentFriend.get("nickname").equals(friendNickname)){
+                    finalResultArray.add(currentFriend);
+                    break;
+                }
+            }
+        }
+
+        return finalResultArray;
+    }
+
+    private int mostraPunteggio(String nickname, SelectionKey currentKey)throws FileNotFoundException,ParseException,IOException{
+        if(nickname==null) throw new NullPointerException("utente di sessione uguale a null");
+
+        if(!checkEsistenza(nickname,currentKey))
+            return -1; // errore nome utente di sessione
+
+        JSONParser parser = new JSONParser();
+        FileReader fileR = new FileReader("ClassificaPunti.json");
+        Object obj;
+
+        obj = parser.parse(fileR);
+        JSONArray classifica = (JSONArray) obj;
+        Iterator<JSONObject> iterator = classifica.iterator();
+        JSONObject currentUser = null;
+
+        while (iterator.hasNext() ){
+            currentUser = iterator.next();
+            iterator.remove();
+            if(currentUser.get("nickname").equals(nickname))
+                return Integer.parseInt(currentUser.get("punteggio").toString());
+        }
+        return -2; // caso brutto (non dovrebbe mai entrare qui)
     }
 
     private int setupSfida(String myNickname, String friendNickname, SelectionKey currentKey) throws FileNotFoundException, ParseException, IOException{
