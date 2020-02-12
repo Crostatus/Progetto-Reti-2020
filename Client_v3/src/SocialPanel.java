@@ -16,7 +16,7 @@ import java.util.Iterator;
 public class SocialPanel {
     private JPanel socialPanel;
     private Client user;
-    private JFrame window;
+    private ClientUI clientUI;
 
     private JTextField username;
     private JTextField score;
@@ -35,10 +35,10 @@ public class SocialPanel {
     private JTextField friendToAdd;
 
 
-    public SocialPanel(Client user, JFrame window){
+    public SocialPanel(Client user, ClientUI clientUI){
         socialPanel = new JPanel();
         socialPanel.setLayout(null);
-        this.window = window;
+        this.clientUI = clientUI;
         this.user = user;
 
 
@@ -58,7 +58,7 @@ public class SocialPanel {
                     //mostra alert con "Ops, qualcosa è andato storto :(
                     z.printStackTrace();
                 }
-                ClientUI.switchToEntryPage();
+                clientUI.switchToEntryPage();
             }
         });
         socialPanel.add(logoutButton);
@@ -118,7 +118,7 @@ public class SocialPanel {
         backButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                ClientUI.switchToMenu();
+                clientUI.switchToMenu();
             }
         });
         socialPanel.add(backButton);

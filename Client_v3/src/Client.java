@@ -34,11 +34,13 @@ public class Client {
     private GamePanel gamePanel;
     private PlayPanel playPanel;
     private ResultPanel resultPanel;
+    private ClientUI clientUI;
 
 
-    public Client(int registerPort, int tcpPort) throws SocketException{
+    public Client(int registerPort, int tcpPort, ClientUI clientUI) throws SocketException{
         this.registerPort=registerPort;
         this.tcpPort = tcpPort;
+        this.clientUI = clientUI;
         login = false;
         inAMatch = new AtomicBoolean(false);
     }
@@ -104,7 +106,7 @@ public class Client {
             buffer = ByteBuffer.allocate(CHUNKSIZE);
             int port = client.socket().getLocalPort();
             //inAMatch.set(true);
-            challengeListener = new UDP_Listener(inAMatch,port,nickname, client);
+            challengeListener = new UDP_Listener(inAMatch,port,nickname, client,clientUI);
             //challengeListener.setDaemon(true);
             challengeListener.start();
             //System.out.println(port);
@@ -256,13 +258,15 @@ public class Client {
             String risposta = riceviRisposta();
             if(risposta.contains("Via alla sfida di traduzione:")){
                 // switch to game Page
-                ClientUI.switchToGamePage();
-                gamePanel.setInfo(nickname,score,friendNickname);
+                clientUI.switchToGamePage();
+                gamePanel.setInfo(nickname,friendNickname);
                 risposta = risposta.replace("Via alla sfida di traduzione:","");
+                resultPanel.setStartTimer();
                 StringTokenizer token = new StringTokenizer(risposta);
                 risposta = token.nextToken();
                 gamePanel.setNewWord(risposta);
                 //startTime = System.currentTimeMillis();
+                return;
             }
             else{
                 inAMatch.set(false);
@@ -337,17 +341,25 @@ public class Client {
         System.out.println(BLUE+"Ho inviato: " + richiesta+RESET);
         buffer.clear();
         String receiveWord = riceviRisposta();
+        //System.out.println(BLUE+"Mi arriva: "+receiveWord+RESET);
+        if(receiveWord.contains("Hai guadagnato")){
+            String first = receiveWord.substring(0,92);
+            String second = receiveWord.substring(93,receiveWord.length());
+            clientUI.switchToResult();
+            System.out.println("Sto per cambiare il panel!");
+            resultPanel.setMyScore(first);
+            resultPanel.setResultString(second);
+            inAMatch.set(false);
+            return;
+        }
         if(receiveWord.contains("Hai tradotto correttamente")){
             //da modificare gli stringoni perchè non ci entra tutto!
-            ClientUI.switchToResult();
-            System.out.println("Sto per cambiare il panel!");
+            clientUI.switchToResult();
+            //System.out.println("Sto per cambiare il panel!");
             resultPanel.setMyScore(receiveWord);
-            resultPanel.getPanel().repaint();
             // controllare la ricezione della stringa finale
-           // resultPanel.waitFinalResult();
         }
         else{
-            System.out.println("Mi arriva: "+receiveWord);
             gamePanel.setNewWord(receiveWord);
         }
     }

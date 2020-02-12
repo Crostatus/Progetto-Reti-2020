@@ -41,22 +41,12 @@ public class ChallengeThread extends Thread{
     private int punteggioSfidante;
     private int punteggioSfidato;
 
-    // inizzializza l'array delle traduzioni dei partecipanti al gioco
-    private void inizzializzaArray(CopyOnWriteArrayList<String> traduzioni){
-        int i;
-        for(i=0; i<parolePerGioco; i++){
-            traduzioni.add(i,"");
-        }
-    }
-
     public ChallengeThread(OnlineList.OnlineUser sfidante, OnlineList.OnlineUser sfidato, ArrayList<String> randomWords)throws SocketException {
         this.sfidato = sfidato;
         this.indiceSfidante = 0;
         this.indiceSfidato = 0;
         this.traduzioneSfidante  = new CopyOnWriteArrayList<String>();
         this.traduzioneSfidato = new CopyOnWriteArrayList<String>();
-        inizzializzaArray(traduzioneSfidante);
-        inizzializzaArray(traduzioneSfidato);
         this.randomWords = randomWords;
         this.sfidante = sfidante;
         int port = sfidante.getUserChannel().socket().getLocalPort();
@@ -74,6 +64,7 @@ public class ChallengeThread extends Thread{
         int porta = sfidato.getUserChannel().socket().getPort();
         //System.out.println("     Porta: "+porta);
         DatagramPacket packet = new DatagramPacket(dati, dati.length, sfidato.getUserChannel().socket().getInetAddress(), porta);
+        String risposta="";
         try{
             DSocket.send(packet);
             DSocket.receive(packet);
@@ -81,12 +72,17 @@ public class ChallengeThread extends Thread{
         catch (SocketTimeoutException e){
             // controllo che vada tutto bene
             System.out.println("Timeout scaduto");
+            DSocket.close();
+            try {
+                responseAndTerminate();
+            }catch (IOException z){
+                z.printStackTrace();
+            }
             Thread.currentThread().interrupt();
         }
         catch (IOException e){
             e.printStackTrace();
         }
-        String risposta="";
         dati = packet.getData();
         risposta = new String(dati, 0, packet.getLength());
         System.out.println("Pacchetto ricevuto: "+risposta);
@@ -112,9 +108,10 @@ public class ChallengeThread extends Thread{
                 Task sfida = new Task();
                 Future<String> future = executor.submit(sfida);
                 try{
-                    future.get(20, TimeUnit.SECONDS);
+                    future.get(18, TimeUnit.SECONDS);
                 }catch (TimeoutException | InterruptedException | ExecutionException e){
                     //sfida.saveAndSet();
+                    e.printStackTrace();
                     future.cancel(true);
                     System.out.println("timeout scaduto");
                 }
@@ -260,7 +257,7 @@ public class ChallengeThread extends Thread{
         attachment.clear();
 
         System.out.println("Messaggio finale che invia il ThreadSfida: "+risposta);
-        currentKey.channel();
+        currentKey.cancel();
     }
 
     class Task implements Callable<String> {
@@ -336,25 +333,25 @@ public class ChallengeThread extends Thread{
             System.out.println("Messaggio arrivato al server: " + risposta );
             // per riconoscere chi mi ha scritto, devo confrontare i canali!!!
             if(sfidante.getUserChannel().equals(client)) {
-                indiceSfidante++;
-                if(indiceSfidante == 3){
+                if(indiceSfidante == 2){
                     finishSfidante = true;
                     attachment.updateMessagge(calcolaPunteggio(traduzioneSfidante, sfidante.getNickname())+EOM);
                 }
-                if(indiceSfidante < 3) {
-                    traduzioneSfidante.add(indiceSfidante-1,risposta);
+                if(indiceSfidante < 2) {
+                    traduzioneSfidante.add(risposta);
+                    indiceSfidante++;
                     attachment.updateMessagge(randomWords.get(indiceSfidante) + EOM);
                 }
             }
             else {
-                indiceSfidato++;
-                if(indiceSfidato == 3){
+                if(indiceSfidato == 2){
                     finishSfidato = true;
                     attachment.updateMessagge(calcolaPunteggio(traduzioneSfidato, sfidato.getNickname())+EOM);
 
                 }
-                if(indiceSfidato < 3) {
-                    traduzioneSfidato.add(indiceSfidato-1,risposta);
+                if(indiceSfidato < 2) {
+                    traduzioneSfidato.add(risposta);
+                    indiceSfidato++;
                     attachment.updateMessagge(randomWords.get(indiceSfidato) + EOM);
                 }
             }
@@ -407,7 +404,7 @@ public class ChallengeThread extends Thread{
         int sbagliate =0;
         int punteggio = 0;
         System.out.println("Dimensione array user: "+risposteUser.size()+" ,dimensione array paroletradote: "+paroleTradotte.size());
-        for(i=0; i<parolePerGioco; i++){
+        for(i=0; i < risposteUser.size(); i++){
             try {
                 System.out.print(risposteUser.get(i)+" VS "+paroleTradotte.get(i));
                 if (risposteUser.get(i).equalsIgnoreCase(paroleTradotte.get(i))) {

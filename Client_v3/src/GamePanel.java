@@ -15,7 +15,7 @@ public class GamePanel {
 
         private JPanel gamePanel;
         private Client user;
-        private JFrame window;
+        private ClientUI clientUI;
 
         private JTextField username;
         private JTextField score;
@@ -29,15 +29,14 @@ public class GamePanel {
         private  String EOM="_EOM";
 
 
-        public GamePanel(Client user, JFrame window){
+        public GamePanel(Client user, ClientUI clientUI){
             gamePanel = new JPanel();
             gamePanel.setLayout(null);
-            this.window = window;
+            this.clientUI = clientUI;
             this.user = user;
             setButtons();
             setScreen();
         }
-
 
         public void setButtons(){
 
@@ -74,9 +73,8 @@ public class GamePanel {
             gamePanel.repaint();
         }
 
-        public void setInfo(String username, String score, String challengeUsername){
+        public void setInfo(String username, String challengeUsername){
             this.username.setText(username);
-            this.score.setText(score);
             this.friendUsername.setText(challengeUsername);
         }
 

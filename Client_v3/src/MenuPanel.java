@@ -16,7 +16,7 @@ import java.util.Iterator;
 public class MenuPanel {
     private JPanel menuPanel;
     private Client user;
-    private JFrame window;
+    private ClientUI clientUI;
     private SocialPanel socialPanel;
     private PlayPanel playPanel;
 
@@ -34,9 +34,9 @@ public class MenuPanel {
 
     private JTextField errorText;
 
-    public MenuPanel(Client user, JFrame window){
+    public MenuPanel(Client user, ClientUI clientUI){
         this.user = user;
-        this.window = window;
+        this.clientUI = clientUI;
         menuPanel = new JPanel();
         menuPanel.setLayout(null);
 
@@ -51,7 +51,7 @@ public class MenuPanel {
                     //mostra alert con "Ops, qualcosa è andato storto :(
                     z.printStackTrace();
                 }
-                ClientUI.switchToEntryPage();
+                clientUI.switchToEntryPage();
             }
         });
         menuPanel.add(logoutButton);
@@ -84,7 +84,7 @@ public class MenuPanel {
         playButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                ClientUI.switchToPlayPage();
+                clientUI.switchToPlayPage();
             }
         });
         menuPanel.add(playButton);
@@ -93,7 +93,7 @@ public class MenuPanel {
         socialButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                ClientUI.switchToSocialPage();
+                clientUI.switchToSocialPage();
             }
         });
         menuPanel.add(socialButton);
@@ -114,11 +114,11 @@ public class MenuPanel {
         getWallpaper();
         menuPanel.add(screen);
 
-        socialPanel = new SocialPanel(user, window);
+        socialPanel = new SocialPanel(user, clientUI);
         socialPanel.setButtons();
         socialPanel.setScreen();
 
-        playPanel = new PlayPanel(user, window);
+        playPanel = new PlayPanel(user, clientUI);
         playPanel.setButtons();
         playPanel.setScreen();
 

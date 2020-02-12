@@ -16,7 +16,7 @@ import java.util.Iterator;
 public class PlayPanel {
     private JPanel playPanel;
     private Client user;
-    private JFrame window;
+    private ClientUI clientUI;
 
     private JTextField username;
     private JTextField score;
@@ -35,10 +35,10 @@ public class PlayPanel {
     private JTextField friendToChallenge;
 
 
-    public PlayPanel(Client user, JFrame window){
+    public PlayPanel(Client user, ClientUI clientUI){
         playPanel = new JPanel();
         playPanel.setLayout(null);
-        this.window = window;
+        this.clientUI = clientUI;
         this.user = user;
     }
 
@@ -54,7 +54,7 @@ public class PlayPanel {
                     //mostra alert con "Ops, qualcosa è andato storto :(
                     z.printStackTrace();
                 }
-                ClientUI.switchToEntryPage();
+                clientUI.switchToEntryPage();
             }
         });
         playPanel.add(logoutButton);
@@ -89,12 +89,14 @@ public class PlayPanel {
             @Override
             public void actionPerformed(ActionEvent e) {
                 String query = friendToChallenge.getText();
+                if(query.equals(""))
+                    return;
                 friendToChallenge.setText("");
                 minorErrorText.setText("In attesa di risposta");
                 playButton.setEnabled(false);
-                refreshPage();
                 try {
                     user.sfida(user.getNickname(), query, score.getText());
+                    //refreshPage();
 
                 }
                 catch (IOException z){
@@ -115,7 +117,7 @@ public class PlayPanel {
         backButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                ClientUI.switchToMenu();
+                clientUI.switchToMenu();
             }
         });
         playPanel.add(backButton);
@@ -174,6 +176,7 @@ public class PlayPanel {
     }
 
     public void refreshPage(){
+        playButton.setEnabled(true);
         errorText.setText("");
         try {
             JSONArray leaderboard = user.mostra_classifica(user.getNickname());

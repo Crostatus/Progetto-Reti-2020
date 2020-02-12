@@ -11,7 +11,7 @@ import java.rmi.NotBoundException;
 public class EntryPanel {
     private JPanel entryPanel;
     private Client user;
-    private JFrame window;
+    private ClientUI clientUI;
 
     private JLabel entryPage;
     private JTextField usernameArea;
@@ -21,8 +21,8 @@ public class EntryPanel {
     private JTextField errorLogin;
     private JTextField errorRegister;
 
-    public EntryPanel(Client user, JFrame window) {
-        this.window = window;
+    public EntryPanel(Client user, ClientUI clientUI) {
+        this.clientUI = clientUI;
         this.user = user;
         entryPanel = new JPanel();
         entryPanel.setLayout(null);
@@ -61,7 +61,7 @@ public class EntryPanel {
                 }
                 System.out.println("Risposta: " + risposta);
                 if(risposta.equals("OK")){
-                    ClientUI.switchToMenu();
+                    clientUI.switchToMenu();
                 }
                 else {
                     errorLogin.setText(risposta + " :(");
@@ -101,7 +101,7 @@ public class EntryPanel {
                     }
                     System.out.println("Risposta: " + risposta);
                     if(risposta.equals("OK")){
-                        ClientUI.switchToMenu();
+                        clientUI.switchToMenu();
                     }
                     else {
                         errorLogin.setText(risposta + " :(");

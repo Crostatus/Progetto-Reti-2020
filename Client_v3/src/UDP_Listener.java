@@ -8,6 +8,7 @@ import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.Scanner;
+import java.util.StringTokenizer;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class UDP_Listener extends Thread{
@@ -22,23 +23,31 @@ public class UDP_Listener extends Thread{
     private static final String GREEN = "\u001B[32m";
     private static final String RED = "\u001B[31m";*/
     private long startTime;
+    private ChallengeFrame challengeFrame;
+    private String challengeMessage;
+    private InetAddress destAddress;
+    private int destPort;
+    private ClientUI clientUI;
 
-    public UDP_Listener(AtomicBoolean bool,int udp, String nickname, SocketChannel client)throws SocketException {
+
+    public UDP_Listener(AtomicBoolean bool,int udp, String nickname, SocketChannel client, ClientUI clientUI)throws SocketException {
         this.clientSocket = new DatagramSocket(udp);
         this.buffer = ByteBuffer.allocate(64);
+        this.clientUI = clientUI;
         this.client = client;
         this.inAMatch = bool;
         this.nickname = nickname;
         System.out.println(nickname+" " + inAMatch.get());
     }
 
-    public void run() {
+   /* public void run() {
         byte [] buffer = new byte[100];
         DatagramPacket packet = new DatagramPacket(buffer,buffer.length);
         String message = null;
         while (!Thread.currentThread().isInterrupted()){
             try {
                 clientSocket.receive(packet);
+
                 InetAddress serverAddress = packet.getAddress();
                 int serverPort = packet.getPort();
                 System.out.println(packet.getPort());
@@ -64,11 +73,59 @@ public class UDP_Listener extends Thread{
             }
         }
         clientSocket.close();
+    }*/
+
+   public String getChallengeMessage(){
+       return challengeMessage;
+   }
+
+    public void run() {
+        byte [] buffer = new byte[100];
+        DatagramPacket packet = new DatagramPacket(buffer,buffer.length);
+        while (!Thread.currentThread().isInterrupted()){
+            try {
+                clientSocket.receive(packet);
+                if(!inAMatch.get()) {
+                    destAddress = packet.getAddress();
+                    destPort = packet.getPort();
+                    System.out.println(packet.getPort());
+                    buffer = packet.getData();
+                    challengeMessage = new String(buffer, 0, packet.getLength());
+                    challengeFrame = new ChallengeFrame(this);
+                }else
+                    System.out.print(" Sono già in una sfida");
+            }catch (IOException e){
+                e.printStackTrace();
+            }
+        }
+        clientSocket.close();
     }
 
-    private void gioca(){
+    public void inviaRisposta(String risposta, String friendNickname)throws IOException{
+        byte[] buffer1 = risposta.getBytes();
+        DatagramPacket packet = new DatagramPacket(buffer1, buffer1.length, destAddress, destPort);
+        clientSocket.send(packet);
 
+        System.out.println("Messaggio UDP: " + challengeMessage);
+        if (risposta.equals("si")) {
+            inAMatch.set(true);
+            risposta = riceviRisposta();
+            if(risposta.contains("Via alla sfida di traduzione:")){
+                // switch to game Page
+                clientUI.switchToGamePage();
+                clientUI.getResultPanel().setStartTimer();
+                GamePanel gamePanel = clientUI.getGamePanel();
+                gamePanel.setInfo(nickname,friendNickname);
+                risposta = risposta.replace("Via alla sfida di traduzione:","");
+                StringTokenizer token = new StringTokenizer(risposta);
+                risposta = token.nextToken();
+                gamePanel.setNewWord(risposta);
+                //startTime = System.currentTimeMillis();
+                return;
+            }
+        }
     }
+
 
    /* private void gioca()throws IOException{
         int i;

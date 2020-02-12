@@ -17,23 +17,23 @@ public class ResultPanel {
     private JTextField errorText;
 
     private Client user;
-    private JFrame window;
+    private ClientUI clientUI;
 
 
-    public ResultPanel(Client user, JFrame window){
+    public ResultPanel(Client user, ClientUI clientUI){
         this.user = user;
-        this.window = window;
+        this.clientUI = clientUI;
         this.resultPanel = new JPanel();
         this.resultPanel.setLayout(null);
 
-        this.errorText = setupTextField(30, 230, 60, 50, "Ops, qualcosa è andato storto :(", 24);
+        this.errorText = setupTextField(30, 230, 60, 50, "", 24);
         resultPanel.add(errorText);
 
 
-        this.scoreText = setupTextField(10,50, 730, 70, "", 28);
+        this.scoreText = setupTextField(10,50, 730, 70, "", 18);
         resultPanel.add(scoreText);
 
-        this.resultField = setupTextField(10, 140, 730, 70, "", 23);
+        this.resultField = setupTextField(10, 140, 730, 70, "", 17);
         resultPanel.add(resultField);
 
         this.backButton = setupButton(320, 344, 107, 107);
@@ -41,7 +41,10 @@ public class ResultPanel {
         backButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                ClientUI.switchToMenu();
+                scoreText.setText("");
+                resultField.setText("");
+                resultField.setText("");
+                clientUI.switchToMenu();
             }
         });
         resultPanel.add(backButton);
@@ -50,37 +53,104 @@ public class ResultPanel {
         resultPanel.add(screen);
 
         resultPanel.repaint();
+        //setStartTimer();
 
     }
 
-    public void waitFinalResult(){
-        if(!scoreText.getText().contains("Hai guadagnato")){
-            try {
-                String finalResult = user.riceviRisposta();
-                resultField.setText(finalResult);
+    public void setResultString(String finalResult){
+        resultField.setText(finalResult);
+        backButton.setEnabled(true);
+        resultPanel.repaint();
 
-            }
-            catch (IOException z){
-                errorText.setText("Ops, qualcosa è andato storto! :(");
-                user.forceLogout();
-                z.printStackTrace();
-            }
-            System.out.println("Qui ci arrivo");
+    }
 
+    /*
+
+
+            String first = receiveWord.substring(0,92);
+            String second = receiveWord.substring(93,receiveWord.length());
+            clientUI.switchToResult();
+            System.out.println("Sto per cambiare il panel!");
+            resultPanel.setMyScore(first);
+            resultPanel.setResultString(second);
+            inAMatch.set(false);
+            return;
         }
+     */
+
+
+    public void setStartTimer(){
+        ActionListener taskPerformer = new ActionListener() {
+            public void actionPerformed(ActionEvent evt) {
+                System.out.println("Ho chiamato la funzione!");
+                if(!resultField.getText().contains("Hai guadagnato")){
+                    try {
+                        String finalResult = user.riceviRisposta();
+                        String first = finalResult.substring(0,92);
+                        String second = finalResult.substring(93,finalResult.length());
+                        scoreText.setText(first);
+                        resultField.setText(second);
+                        resultPanel.repaint();
+                        clientUI.switchToResult();
+                    }
+                    catch (IOException z){
+                        errorText.setText("Ops, qualcosa è andato storto! :(");
+                        user.forceLogout();
+                        z.printStackTrace();
+                    }
+                    user.setBoolean(false);
+                    backButton.setEnabled(true);
+                    resultPanel.repaint();
+                }
+
+            }
+        };
+        Timer timer = new Timer(18000 ,taskPerformer);
+        timer.setRepeats(false);
+        timer.start();
+    }
+
+    public void waitFinalResult(){
+        ActionListener taskPerformer = new ActionListener() {
+            public void actionPerformed(ActionEvent evt) {
+                if(!resultField.getText().contains("Hai guadagnato")){
+                    try {
+                        resultField.repaint();
+                        String finalResult = user.riceviRisposta();
+                        resultField.setText(finalResult);
+                    }
+                    catch (IOException z){
+                        errorText.setText("Ops, qualcosa è andato storto! :(");
+                        user.forceLogout();
+                        z.printStackTrace();
+                    }
+                    System.out.println("Qui ci arrivo");
+                    backButton.setEnabled(true);
+                    resultPanel.repaint();
+                    user.setBoolean(false);
+                }
+            }
+        };
+        Timer timer = new Timer(100 ,taskPerformer);
+        timer.setRepeats(false);
+        timer.start();
+
+    }
+
+    public void setBackButtonEnabled(boolean value){
         backButton.setEnabled(true);
         resultPanel.repaint();
     }
 
+
     public void setMyScore(String message){
         scoreText.setText(message);
         resultPanel.repaint();
+        waitFinalResult();
     }
 
     public void refreshPage(){
         errorText.setText("");
-        scoreText.setText("");
-        resultField.setText("");
         resultPanel.repaint();
     }
 
@@ -95,6 +165,7 @@ public class ResultPanel {
     }
 
     private JButton setupButton(int x, int y, int width, int height){
+
         JButton button = new JButton();
         button.setBounds(x, y, width, height);
         button.setBorder(null);
