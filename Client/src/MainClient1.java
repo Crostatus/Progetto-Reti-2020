@@ -15,9 +15,15 @@ public class MainClient1 {
     public static void main(String[] args) throws Exception {
 
 
-        Client prova = new Client(8080,6666);
+        ClientUI clientUI = new ClientUI();
+
+        /*Client prova = new Client(8080,6666);
+
         prova.login("andrea", "prova98");
-        prova.sfida("andrea", "alessandro");
+        //prova.aggiungi_amico("andrea","alessandro");
+        prova.sfida("andrea", "alessandro","");
+        //Thread.sleep(10000);
+        prova.lista_amici("andrea");*/
         /*boolean logout = false;
         AtomicBoolean inAMatch;
         Client test1 = new Client(8080, 6666);
